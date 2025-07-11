@@ -1,4 +1,3 @@
-# src/config/settings.py (Polished version)
 from pydantic_settings import BaseSettings
 from pathlib import Path
 from typing import Any, Optional, Dict
@@ -34,6 +33,11 @@ class Settings(BaseSettings):
     LLMs_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 2048
     LLM_STREAMING: bool = True
+
+    # Langfuse Configuration
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_HOST: Optional[str] = "http://localhost:3000"
     
     # RAG Configuration
     CHROMA_COLLECTION_NAME: str = "rag-pipeline"
