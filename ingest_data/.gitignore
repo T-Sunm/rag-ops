@@ -1,0 +1,15 @@
+# Bỏ qua thư mục logs (log file, symlink, ... thường gây lỗi trên Windows)
+logs/
+
+# Bỏ qua cache của huggingface/models
+hf_cache/
+
+# Bỏ qua file tạm, compiled python
+*.pyc
+__pycache__/
+
+# Bỏ qua file môi trường
+*.env
+
+# Bỏ qua file lock
+*.lock

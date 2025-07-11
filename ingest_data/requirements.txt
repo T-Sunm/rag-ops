@@ -1,0 +1,24 @@
+# Storage & Database
+chromadb==0.4.24        # Vector store
+minio==7.2.15           # Object storage
+boto3>=1.38.13          # AWS SDK (nếu cần S3)
+
+# Data Processing
+pandas>=2.2.3           # Data manipulation
+numpy>=1.22.0           # Numerical computing
+pyarrow>=17.0.0         # Efficient data format
+pypdf==5.6.1            # PDF parsing
+tqdm==4.67.1            # Progress bars
+rapidocr-onnxruntime==1.4.4
+
+# LLM & Embeddings
+langchain==0.1.14              # LLM framework
+langchain-core==0.1.43         # Core components
+langchain-community==0.0.31    # Community components
+sentence-transformers==2.6.1   # Embeddings
+huggingface-hub==0.22.2       # Model hub
+langchain-chroma==0.1.0        # Chroma integration
+
+# Utilities
+wget==3.2             # Download files
+pydantic>=2.10.0      # Data validation

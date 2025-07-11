@@ -1,0 +1,30 @@
+# Storage & Database
+chromadb==0.4.24
+minio==7.2.15
+boto3>=1.38.13
+
+# Data Processing
+pandas>=2.2.3
+numpy>=1.22.0
+pyarrow>=17.0.0
+pypdf==5.6.1
+tqdm==4.67.1
+
+# LLM & Embeddings
+langchain==0.3.26
+langchain-core==0.3.67
+langchain-community==0.3.26
+sentence-transformers==2.6.1
+huggingface-hub==0.22.2
+langchain-chroma==0.1.0
+
+# Utilities
+wget==3.2
+pydantic>=2.10.0
+
+# Web API
+fastapi>=0.115.12
+uvicorn[standard]>=0.34.2 
+
+# observability
+langfuse==3.1.2
