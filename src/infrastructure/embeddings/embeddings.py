@@ -1,6 +1,7 @@
 from sentence_transformers import SentenceTransformer
-from typing import Union, List
+from typing import List
 from langchain.embeddings.base import Embeddings
+import numpy as np
 
 class EmbeddingService(Embeddings):
     def __init__(self, model_name: str = 'sentence-transformers/all-mpnet-base-v2'):
@@ -10,9 +11,9 @@ class EmbeddingService(Embeddings):
         """Embed a single text (normalized vector) and return as list."""
         # SentenceTransformer.encode returns a numpy array for a single string
         vector = self.embedding_model.encode(text, normalize_embeddings=True)
-        return vector.tolist()
+        return np.array(vector).tolist()
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed a list of texts (normalized vectors) and return as list of lists."""
         vectors = self.embedding_model.encode(texts, normalize_embeddings=True)
-        return vectors.tolist()
+        return np.array(vectors).tolist()

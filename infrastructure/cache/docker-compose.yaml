@@ -1,0 +1,12 @@
+
+version: '3.8'
+
+name: langchain-semantic-cache
+services:
+  semantic-redis:
+    image: redis/redis-stack:latest
+    container_name: semantic-redis
+    ports:
+      - "6378:6379"  # Redis (tránh conflict với langfuse)
+      - "8002:8001"  # RedisInsight Web UI
+    restart: always

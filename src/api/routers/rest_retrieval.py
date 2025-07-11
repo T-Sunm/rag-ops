@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status
-from src.dependencies.rag import get_rag_service
-from src.schemas.in_output import UserInput, ResponseOutput
-from src.services.rag import Rag
+from src.api.dependencies.rag import get_rag_service
+from src.schemas.api.requests import UserInput
+from src.schemas.api.response import ResponseOutput
+from src.services.application.rag import Rag
 
 router = APIRouter()
 

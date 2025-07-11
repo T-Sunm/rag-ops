@@ -3,9 +3,9 @@ import tracemalloc
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from src.routers.api import api_router
-from src.services.rag import Rag
-from src.settings import APP_CONFIGS, SETTINGS
+from src.api.routers.api import api_router
+from src.services.application.rag import Rag
+from src.config.settings import APP_CONFIGS, SETTINGS
 
 tracemalloc.start()
 

@@ -1,14 +1,12 @@
-import logging
 from langchain_chroma import Chroma
-from src.services.embeddings import EmbeddingService
-from src.settings import SETTINGS
+from src.infrastructure.embeddings.embeddings import EmbeddingService
+from src.config.settings import SETTINGS
 from langchain.schema.document import Document
 from typing import List, Tuple, Dict, Any
-from pathlib import Path
 
 def _format_docs(
     docs: List[Document],
-    scores: List[float] = None
+    scores: List[float] | None = None
 ) -> str:
     formatted = []
     for idx, doc in enumerate(docs):
@@ -25,8 +23,7 @@ class ChromaClientService:
         self.embedding_service = EmbeddingService()
 
     def _connect(self):
-        base_dir = Path(__file__).parent.parent.parent  # từ .../src/services lên project root
-        persist_dir = (base_dir / "DATA" / "chromadb").resolve()
+        persist_dir = SETTINGS.CHROMA_PERSIST_DIR
 
         self.client = Chroma(
             collection_name=SETTINGS.CHROMA_COLLECTION_NAME,

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
-from src.dependencies.rag import get_rag_service
-from src.schemas.in_output import UserInput
-from src.services.rag import Rag
+from src.api.dependencies.rag import get_rag_service
+from src.schemas.api.requests import UserInput
+from src.services.application.rag import Rag
 from fastapi.responses import StreamingResponse
 import asyncio
 import uuid

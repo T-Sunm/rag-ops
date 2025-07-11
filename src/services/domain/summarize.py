@@ -6,7 +6,7 @@ from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 from src.utils import logger
 from langchain_openai import ChatOpenAI
-from src.settings import SETTINGS
+from src.config.settings import SETTINGS
 
 class SummarizeService:
     def __init__(self, langfuse_handler: CallbackHandler):
@@ -17,10 +17,7 @@ class SummarizeService:
         #     type="chat",
         # )
         self.llm = ChatOpenAI(
-            openai_api_base="http://127.0.0.1:1234/v1",
-            temperature=SETTINGS.LLMs_TEMPERATURE,
-            openai_api_key="dummy",
-            streaming=True,
+            **SETTINGS.llm_config
         )
     async def _summarize_and_truncate_history(self, chat_history: list[dict], max_length: int = 4) -> list[dict]:
         """Summary 4 messages cũ nhất và giữ lại phần còn lại"""

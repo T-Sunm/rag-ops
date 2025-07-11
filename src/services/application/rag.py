@@ -1,10 +1,10 @@
-from src.services.generator import GeneratorService
-from src.services.summarize import SummarizeService
+from src.services.domain.generator import GeneratorService
+from src.services.domain.summarize import SummarizeService
 from langchain.tools import StructuredTool
 from langchain_openai import ChatOpenAI
-from src.settings import SETTINGS
-from src.services.chroma_client import ChromaClientService
-from src.schemas.retrieval import SearchArgs
+from src.config.settings import SETTINGS
+from src.infrastructure.vector_stores.chroma_client import ChromaClientService
+from src.schemas.domain.retrieval import SearchArgs
 from src.utils import logger
 from langfuse import observe
 from langfuse.langchain import CallbackHandler
@@ -14,11 +14,7 @@ import uuid
 class Rag:
     def __init__(self):
         self.llm = ChatOpenAI(
-            openai_api_base="http://127.0.0.1:1234/v1",
-            temperature=SETTINGS.LLMs_TEMPERATURE,
-            openai_api_key="dummy",
-            streaming=True,
-            max_tokens=2048,
+            **SETTINGS.llm_config
         )
         self.chroma_client = ChromaClientService()
         self.langfuse_handler = CallbackHandler()

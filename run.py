@@ -1,5 +1,5 @@
 import uvicorn
-from src.settings import SETTINGS
+from src.config.settings import SETTINGS
 from src.utils.logger import logger
 
 
