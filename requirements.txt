@@ -2,6 +2,7 @@
 chromadb==0.4.24
 minio==7.2.15
 boto3>=1.38.13
+redis>=5.0.0,<6.0.0
 
 # Data Processing
 pandas>=2.2.3
@@ -20,7 +21,7 @@ langchain-chroma==0.1.0
 
 # Utilities
 wget==3.2
-pydantic>=2.10.0
+pydantic>=2.10.0    
 
 # Web API
 fastapi>=0.115.12

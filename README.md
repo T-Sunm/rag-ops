@@ -4,17 +4,60 @@ This project provides a comprehensive API layer for a Retrieval-Augmented Genera
 
 ## Architecture Components
 
-- **API Service (`src/`)**: A FastAPI application that exposes multiple endpoints for interacting with the RAG system:
-  - **REST API**: For standard request/response interactions.
-  - **Server-Sent Events (SSE)**: For streaming responses back to the client.
-  - **WebSocket**: For real-time, bidirectional communication.
-- **Data Ingestion (`ingest_data/`)**: An Apache Airflow pipeline to process and ingest data into the vector store. The infrastructure includes:
-  - **Airflow**: For orchestrating data workflows.
-  - **PostgreSQL**: As the backend for Airflow.
-  - **Redis**: As the message broker for Airflow.
-  - **MinIO**: As an S3-compatible object store for data sources.
-  - **ChromaDB**: As the vector store for ingested data (persisted in `DATA/chromadb`).
-- **Observability (`observability/`)**: A dedicated stack for monitoring and tracing the RAG application, powered by **Langfuse**. This helps in tracking requests, responses, and the internal workings of the RAG pipeline.
+This RAG system follows a modular, microservices-oriented architecture with clear separation of concerns:
+
+### 🚀 **API Layer** (`src/`)
+The FastAPI-based service layer provides multiple interaction patterns:
+
+| Endpoint | Protocol | Use Case | Port |
+|----------|----------|----------|------|
+| `/v1/rest-retrieve/` | REST | Standard request/response | 8000 |
+| `/v1/sse-retrieve/` | Server-Sent Events | Real-time streaming responses | 8000 |
+| `/v1/ws-retrieve/` | WebSocket | Bidirectional real-time communication | 8000 |
+
+### ⚡ **Caching Layer** (`infrastructure/cache/`)
+Redis-powered caching system for performance optimization:
+
+- **📊 Embeddings Cache**: Stores computed embeddings (TTL: 24h)
+- **🔍 Vector Search Cache**: Caches similarity search results (TTL: 1h)
+- **🤖 LLM Response Cache**: Caches model responses (TTL: 6h)
+- **👤 Session History Cache**: Maintains conversation context (TTL: 24h)
+
+### 🧠 **RAG Core Engine**
+The heart of the retrieval-augmented generation system:
+
+- **🔤 Embeddings Generator**: Converts text to vector representations
+- **🗄️ ChromaDB Vector Store**: Persistent vector database (`DATA/chromadb`)
+- **🤖 LLM Provider**: OpenAI API or local LM Studio integration
+- **🔄 RAG Service**: Orchestrates retrieval and generation pipeline
+
+### 📊 **Data Pipeline** (`ingest_data/`)
+Apache Airflow-orchestrated data processing workflow:
+
+| Component | Purpose | Port |
+|-----------|---------|------|
+| **Apache Airflow** | Workflow orchestration | 8080 |
+| **MinIO** | S3-compatible object storage | 9001 |
+| **PostgreSQL** | Airflow metadata database | 5432 |
+| **Redis** | Airflow message broker | 6379 |
+
+### 📈 **Observability Stack** (`infrastructure/observability/`)
+Comprehensive monitoring and tracing with Langfuse:
+
+- **🔍 Request Tracing**: End-to-end request tracking
+- **📊 Performance Metrics**: Response times, cache hit rates
+- **🤖 LLM Monitoring**: Token usage, model performance
+- **🐛 Debug Tools**: Error tracking and troubleshooting
+
+### 🏗️ **Infrastructure Services**
+Supporting services for the entire stack:
+
+```
+infrastructure/
+├── cache/          # Redis cache service
+├── observability/  # Langfuse monitoring stack  
+└── storage/        # Additional storage services
+```
 
 ## Setup and Installation
 
@@ -78,23 +121,32 @@ Follow these steps in order to get all the services running correctly.
 
 ### Step 1: Start Infrastructure Services
 
-This project contains two separate `docker-compose` configurations for infrastructure.
+This project contains multiple `docker-compose` configurations for different infrastructure components.
 
-#### A. Data Ingestion & Storage (Airflow, Minio, etc.)
+#### A. Cache Layer (Redis)
 
-This stack provides the services needed to run the data ingestion pipeline.
+Start the Redis cache service for application-level caching:
 
 ```bash
-cd ingest_data/
+cd infrastructure/cache/
 docker compose up -d
 ```
 
 #### B. Observability (Langfuse)
 
-The Langfuse stack allows you to monitor and debug your RAG application.
+The Langfuse stack allows you to monitor and debug your RAG application:
 
 ```bash
-cd observability/
+cd infrastructure/observability/
+docker compose up -d
+```
+
+#### C. Data Ingestion & Storage (Airflow, Minio, etc.)
+
+This stack provides the services needed to run the data ingestion pipeline:
+
+```bash
+cd ingest_data/
 docker compose up -d
 ```
 
@@ -109,7 +161,7 @@ Once the Airflow services are running, you need to trigger the DAG to process yo
 
 ### Step 3: Start the RAG API Server
 
-After the infrastructure is up and the data has been ingested, you can start the FastAPI application.
+After all infrastructure services are up and the data has been ingested, you can start the FastAPI application.
 
 ```bash
 # Make sure you have activated your conda or venv environment
@@ -117,6 +169,8 @@ python run.py
 ```
 
 The API server will be available at **http://localhost:8000**.
+
+> **Note**: The API server now includes Redis caching for improved performance. Make sure the Redis cache service is running before starting the API server.
 
 ## API Usage
 
@@ -146,28 +200,48 @@ curl -X 'POST' \
 }'
 ```
 
-### WebSocket API
-
-1.  Go to the interactive API documentation at **http://localhost:8000/docs**.
-2.  Find the `/v1/ws-retrieve/` endpoint and open it.
-3.  Click "Try it out" and then "Execute" to establish a connection.
-4.  Use the interface to send and receive messages.
-
 ## Accessing UIs
 
-- **Airflow UI**: http://localhost:8080
 - **FastAPI Docs**: http://localhost:8000/docs
 - **Langfuse UI**: http://localhost:3000
+- **Airflow UI**: http://localhost:8080
 - **MinIO Console**: http://localhost:9001
+- **Redis Commander**: http://localhost:8081 (if enabled in cache stack)
 - **LM Studio**: Local application (if using local LLM)
 
 ## Troubleshooting
 
-### LM Studio Connection Issues
+### Common Issues
+
+#### Redis Connection Issues
+
+If you encounter Redis connection errors:
+
+1. **Ensure Redis cache service is running**:
+   ```bash
+   cd infrastructure/cache/
+   docker compose ps
+   ```
+2. **Check Redis logs**:
+   ```bash
+   docker compose logs redis
+   ```
+3. **Verify Redis is accessible** on port 6379
+
+#### LM Studio Connection Issues
 
 If you encounter connection errors when using LM Studio with Langfuse:
 
 1. **Ensure LM Studio server is running** on port 1234
 2. **Use the correct URL format**: `http://host.docker.internal:1234/v1` for Docker environments
 3. **Check LM Studio logs** for any error messages
-4. **Verify model is loaded** in LM Studio before testing connections 
+4. **Verify model is loaded** in LM Studio before testing connections
+
+#### Service Startup Order
+
+Make sure to start services in the correct order:
+1. Cache layer (Redis)
+2. Observability (Langfuse)
+3. Data ingestion (Airflow stack)
+4. Run data ingestion pipeline
+5. Start RAG API server 

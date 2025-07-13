@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     API_V1_STR: str = "/v1"
     DEBUG: bool = True
+    ENVIRONMENT: str = "development"
     
     # LLM Provider Selection
     LLM_PROVIDER: str = "lmstudio"  # lmstudio | openai | ollama
@@ -46,7 +47,7 @@ class Settings(BaseSettings):
     # Performance & Caching
     CACHE_TTL: int = 3600
     MAX_RESPONSE_LENGTH: int = 2048
-    
+    REDIS_URI: str = "localhost:6378"
     class Config:
         env_file = ".env"
 

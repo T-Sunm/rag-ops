@@ -10,7 +10,7 @@ from langfuse import observe
 from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 import uuid
-
+from src.cache.standard_cache import redis_cache
 class Rag:
     def __init__(self):
         self.llm = ChatOpenAI(
@@ -78,6 +78,7 @@ class Rag:
         ])
 
     @observe(name="rag-service")
+    @redis_cache.cache(ttl=60)
     async def get_response(self, question: str, session_id: str | None = None, user_id: str | None = None):
         # Generate session_id nếu không có
         if not session_id:
