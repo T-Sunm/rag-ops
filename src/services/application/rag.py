@@ -10,7 +10,9 @@ from langfuse import observe
 from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 import uuid
-from src.cache.standard_cache import redis_cache
+from src.cache.standard_cache import standard_cache
+from src.cache.semantic_cache import setup_semantic_cache
+
 class Rag:
     def __init__(self):
         self.llm = ChatOpenAI(
@@ -19,6 +21,7 @@ class Rag:
         self.chroma_client = ChromaClientService()
         self.langfuse_handler = CallbackHandler()
         self.langfuse = get_client()
+        setup_semantic_cache()
         
         # In-memory storage cho session history
         self.session_histories: dict[str, list[dict]] = {}
@@ -78,7 +81,7 @@ class Rag:
         ])
 
     @observe(name="rag-service")
-    @redis_cache.cache(ttl=60)
+    # @standard_cache.cache(ttl=60)
     async def get_response(self, question: str, session_id: str | None = None, user_id: str | None = None):
         # Generate session_id nếu không có
         if not session_id:

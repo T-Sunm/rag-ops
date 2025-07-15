@@ -17,3 +17,5 @@ class EmbeddingService(Embeddings):
         """Embed a list of texts (normalized vectors) and return as list of lists."""
         vectors = self.embedding_model.encode(texts, normalize_embeddings=True)
         return np.array(vectors).tolist()
+
+embedding_service = EmbeddingService()

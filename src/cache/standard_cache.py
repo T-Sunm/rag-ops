@@ -16,7 +16,7 @@ class UUIDEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class RedisCache:
+class StandardCache:
     def __init__(self):
         self.storage_uri = f"redis://{SETTINGS.REDIS_URI}"
         self.client = redis.Redis(
@@ -70,6 +70,7 @@ class RedisCache:
 
                 try:
                     cached_result = self.client.get(key)
+                    logging.info(f"Cache lookup result: {cached_result is not None}")
                 except Exception as e:
                     # If redis is not available, return the actual result
                     logging.warning(
@@ -82,6 +83,7 @@ class RedisCache:
                 # If key is not found in cache,
                 # call the function and cache the result.
                 if not cached_result:
+                    logging.info(f"Cache MISS for key: {key}")  
                     result = await func(*args, **kwargs)
                     try:
                         # If type of result do not contains any custom class
@@ -114,11 +116,12 @@ class RedisCache:
                             return self.deserialize(serialized_result)
 
                     self.set_key(key, serialized_result, ttl)
-                    logging.info(f"Cached key: {key}")
+                    logging.info(f"Cache STORED for key: {key}")
                     return self.deserialize(serialized_result)
                 else:
                     # If key is found in cache,
                     # return the cached result after deserializing
+                    logging.info(f"Cache HIT for key: {key}")
                     return self.deserialize(cached_result)  # type: ignore
 
             return inner_cache
@@ -182,4 +185,4 @@ class RedisCache:
         return self.client.keys(pattern)
 
 
-redis_cache = RedisCache()
+standard_cache = StandardCache()

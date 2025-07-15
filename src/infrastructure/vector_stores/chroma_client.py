@@ -1,5 +1,5 @@
 from langchain_chroma import Chroma
-from src.infrastructure.embeddings.embeddings import EmbeddingService
+from src.infrastructure.embeddings.embeddings import embedding_service
 from src.config.settings import SETTINGS
 from langchain.schema.document import Document
 from typing import List, Tuple, Dict, Any
@@ -20,7 +20,7 @@ class ChromaClientService:
     def __init__(self):
         self.client = None
         self.collection = None
-        self.embedding_service = EmbeddingService()
+        self.embedding_service = embedding_service
 
     def _connect(self):
         persist_dir = SETTINGS.CHROMA_PERSIST_DIR
