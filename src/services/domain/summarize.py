@@ -7,6 +7,7 @@ from langfuse import get_client
 from src.utils import logger
 from langchain_openai import ChatOpenAI
 from src.config.settings import SETTINGS
+from src.cache.semantic_cache import semantic_cache
 
 class SummarizeService:
     def __init__(self, langfuse_handler: CallbackHandler):
@@ -19,6 +20,12 @@ class SummarizeService:
         self.llm = ChatOpenAI(
             **SETTINGS.llm_config
         )
+        
+    @semantic_cache.cache(
+        namespace="summarization", 
+        distance_threshold=0.3,  # Looser cho summarization  
+        ttl=1800  # 30 minutes
+    )
     async def _summarize_and_truncate_history(self, chat_history: list[dict], max_length: int = 4) -> list[dict]:
         """Summary 4 messages cũ nhất và giữ lại phần còn lại"""
         if len(chat_history) <= max_length:

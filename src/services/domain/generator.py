@@ -11,6 +11,10 @@ import re
 from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 from langfuse import observe
+from src.cache.semantic_cache import semantic_cache
+from functools import wraps
+
+
 class GeneratorService:
     def __init__(self, llm_with_tools: Runnable[LanguageModelInput, BaseMessage], tools: dict[str, StructuredTool], langfuse_handler: CallbackHandler):
         self.llm_with_tools = llm_with_tools
@@ -85,6 +89,11 @@ class GeneratorService:
         return messages, executed_tools
     
     @observe(name="rag_generation")
+    @semantic_cache.cache(
+        namespace="rag_generation", 
+        distance_threshold=0.1,
+        ttl=3600
+    )
     async def _rag_generation(self, messages: list, question: str, chat_history: list[dict], 
                              session_id: str | None = None, user_id: str | None = None):
         """Phase 3: RAG generation với context từ tools"""

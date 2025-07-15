@@ -34,17 +34,14 @@ class SemanticCache:
         
         return self.caches[namespace]
     
+    # 
     def cache(self, 
               namespace: str, 
               distance_threshold: float = 0.2, 
               ttl: int = 3600):
         """
-        Decorator for semantic caching with isolated namespaces.
-        
-        Usage:
-        @semantic_cache.cache("rag_generation", distance_threshold=0.1, ttl=3600)
-        async def my_llm_function():
-            # LLM calls will use isolated semantic cache
+        Decorator for semantic caching with isolated Redis databases/indexes.
+        Purpose: Each namespace creates separate Redis storage to prevent cache collision
         """
         def decorator(func):
             @wraps(func)
@@ -55,12 +52,13 @@ class SemanticCache:
                 # Get/create specific cache for this namespace
                 cache = self.get_cache(namespace, distance_threshold, ttl)
                 if cache:
-                    set_llm_cache(cache)  # Set global cache như docs recommend
+                    set_llm_cache(cache)
                     logger.debug(f"Using semantic cache: {namespace}")
                 else:
                     logger.warning(f"Failed to set cache for {namespace}, using original")
                 
                 try:
+                    # ✅ CRITICAL: Call function and return result
                     result = await func(*args, **kwargs)
                     return result
                 finally:
@@ -68,7 +66,6 @@ class SemanticCache:
                     if original_cache:
                         set_llm_cache(original_cache)
                     else:
-                        # Clear global cache if no original
                         set_llm_cache(None)
                         
             return wrapper
@@ -78,7 +75,7 @@ class SemanticCache:
         """Clear cache for specific namespace or all"""
         if namespace:
             if namespace in self.caches:
-                self.caches[namespace].clear()  # Sử dụng clear() method từ docs
+                self.caches[namespace].clear()
                 logger.info(f"Cleared cache for namespace: {namespace}")
         else:
             for name, cache in self.caches.items():
@@ -90,7 +87,7 @@ class SemanticCache:
         info = {}
         for name, cache in self.caches.items():
             info[name] = {
-                "index_name": cache.name(),  # Sử dụng name() method từ docs
+                "index_name": cache.name(),
                 "distance_threshold": cache.distance_threshold,
                 "ttl": cache.ttl
             }

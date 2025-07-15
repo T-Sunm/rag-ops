@@ -1,8 +1,10 @@
 from langchain_chroma import Chroma
+from langfuse import observe
 from src.infrastructure.embeddings.embeddings import embedding_service
 from src.config.settings import SETTINGS
 from langchain.schema.document import Document
 from typing import List, Tuple, Dict, Any
+from src.cache.standard_cache import standard_cache
 
 def _format_docs(
     docs: List[Document],
@@ -30,7 +32,8 @@ class ChromaClientService:
             persist_directory=str(persist_dir),
             embedding_function=self.embedding_service,
         )
-
+    @observe(name="retrieve_vector")
+    @standard_cache.cache(ttl=300)
     def retrieve_vector(
         self,
         question: str,
