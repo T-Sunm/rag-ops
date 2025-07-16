@@ -1,3 +1,4 @@
+from cache.standard_cache import standard_cache
 from src.services.domain.generator import GeneratorService
 from src.services.domain.summarize import SummarizeService
 from langchain.tools import StructuredTool
@@ -79,6 +80,7 @@ class Rag:
         ])
 
     @observe(name="rag-service")
+    @standard_cache.cache(ttl=300)
     async def get_response(self, question: str, session_id: str | None = None, user_id: str | None = None):
         # Generate session_id nếu không có
         if not session_id:

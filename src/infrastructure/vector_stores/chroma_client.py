@@ -32,8 +32,7 @@ class ChromaClientService:
             persist_directory=str(persist_dir),
             embedding_function=self.embedding_service,
         )
-    @observe(name="retrieve_vector")
-    @standard_cache.cache(ttl=300)
+
     def retrieve_vector(
         self,
         question: str,
