@@ -26,15 +26,15 @@ class SummarizeService:
         distance_threshold=0.3,  # Looser cho summarization  
         ttl=1800  # 30 minutes
     )
-    async def _summarize_and_truncate_history(self, chat_history: list[dict], max_length: int = 4) -> list[dict]:
+    async def _summarize_and_truncate_history(self, chat_history: list[dict], keep_last: int = 4) -> list[dict]:
         """Summary 4 messages cũ nhất và giữ lại phần còn lại"""
-        if len(chat_history) <= max_length:
+        if len(chat_history) <= keep_last:
             return chat_history
         
         try:
-            # Lấy 6 messages cũ nhất để summary
-            old_messages = chat_history[:max_length]  # 6 messages đầu
-            remaining_messages = chat_history[max_length:]  # Phần còn lại
+            # Lấy keep_last messages cũ nhất để summary
+            old_messages = chat_history[:keep_last]
+            remaining_messages = chat_history[keep_last:]
             
             # Tạo summary từ 6 messages cũ
             old_conversation = "\n".join([
@@ -66,4 +66,4 @@ class SummarizeService:
         except Exception as e:
             logger.error(f"Error summarizing history: {e}")
             # Fallback: chỉ lấy recent messages
-            return chat_history[-max_length:]
+            return chat_history[-keep_last:]

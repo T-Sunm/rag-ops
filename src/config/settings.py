@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # LM Studio Configuration
     LM_STUDIO_BASE_URL: str = "http://127.0.0.1:1234/v1"
     LM_STUDIO_API_KEY: str = "dummy"
-    LM_STUDIO_MODEL: str = "local-model"
+    LM_STUDIO_MODEL: str = "qwen3-1.7b"
     
     # OpenAI Configuration
     OPENAI_API_KEY: Optional[str] = None

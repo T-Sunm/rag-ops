@@ -30,3 +30,6 @@ uvicorn[standard]>=0.34.2
 
 # observability
 langfuse==3.1.2
+
+# Guardrails
+nemoguardrails==0.14.1

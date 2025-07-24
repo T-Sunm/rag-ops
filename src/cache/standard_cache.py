@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 import redis
+from nemoguardrails import LLMRails
 
 from src.config.settings import SETTINGS
 
@@ -31,17 +32,21 @@ class StandardCache:
         module_name = func.__module__
         func_name = func.__qualname__
         
-        # Bỏ 'self' khỏi args để tránh serialization issues
+        # Bỏ 'self' và LLMRails khỏi args để tránh serialization issues
         if args and hasattr(args[0], func.__name__):
-            args_to_serialize = args[1:]  # Skip 'self'
+            # Xử lý method: bỏ qua self (args[0]) và lọc LLMRails
+            args_to_serialize = tuple(arg for arg in args[1:] if not isinstance(arg, LLMRails))
             class_name = args[0].__class__.__name__
             func_name = f"{class_name}.{func.__name__}"
         else:
-            args_to_serialize = args
+            # Xử lý function: lọc LLMRails
+            args_to_serialize = tuple(arg for arg in args if not isinstance(arg, LLMRails))
         
+        # Lọc LLMRails khỏi kwargs
+        kwargs_to_serialize = {k: v for k, v in kwargs.items() if not isinstance(v, LLMRails)}
         # Tạo cache key
         dumped_args = self.serialize(args_to_serialize)
-        dumped_kwargs = self.serialize(kwargs)
+        dumped_kwargs = self.serialize(kwargs_to_serialize)
         key = (
             f"mlops:{environment}:{module_name}:"
             + f"{func_name}:{dumped_args}:{dumped_kwargs}"
