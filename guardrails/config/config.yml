@@ -54,17 +54,14 @@ sample_conversation: |
 rails:
   input:
     flows:
-      - self check input 
-      - content safety check input $model=content_safety
-      # - user query
+      - self check input
+      - user query
 
   output:
     flows:
-      - self check output 
-      - self check facts
-      - content safety check output $model=content_safety
+      - self check output
   
-  rails:
-    - path: rails/disallowed_topics.co
+  # rails:
+  #   - path: rails/disallowed_topics.co
 
 # nemoguardrails server --config config --port 8008 --default-config-id guardrails

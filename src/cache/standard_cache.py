@@ -25,25 +25,31 @@ class StandardCache:
             host=self.storage_uri.split(":")[1].replace("//", ""),
             port=int(self.storage_uri.split(":")[2]),
         )
-    
+
     def _cache_logic(self, func, args, kwargs, ttl, validatedModel, is_async=False):
         """Shared cache logic cho cả sync và async functions"""
         environment = SETTINGS.ENVIRONMENT
         module_name = func.__module__
         func_name = func.__qualname__
-        
+
         # Bỏ 'self' và LLMRails khỏi args để tránh serialization issues
         if args and hasattr(args[0], func.__name__):
             # Xử lý method: bỏ qua self (args[0]) và lọc LLMRails
-            args_to_serialize = tuple(arg for arg in args[1:] if not isinstance(arg, LLMRails))
+            args_to_serialize = tuple(
+                arg for arg in args[1:] if not isinstance(arg, LLMRails)
+            )
             class_name = args[0].__class__.__name__
             func_name = f"{class_name}.{func.__name__}"
         else:
             # Xử lý function: lọc LLMRails
-            args_to_serialize = tuple(arg for arg in args if not isinstance(arg, LLMRails))
-        
+            args_to_serialize = tuple(
+                arg for arg in args if not isinstance(arg, LLMRails)
+            )
+
         # Lọc LLMRails khỏi kwargs
-        kwargs_to_serialize = {k: v for k, v in kwargs.items() if not isinstance(v, LLMRails)}
+        kwargs_to_serialize = {
+            k: v for k, v in kwargs.items() if not isinstance(v, LLMRails)
+        }
         # Tạo cache key
         dumped_args = self.serialize(args_to_serialize)
         dumped_kwargs = self.serialize(kwargs_to_serialize)
@@ -60,12 +66,12 @@ class StandardCache:
         except Exception as e:
             logging.warning(f"Redis not available for key: {key}, error: {e}")
             return None, None  # Signal: gọi function trực tiếp
-        
+
         # Cache HIT - trả về kết quả từ cache
         if cached_result:
             logging.info(f"Cache HIT for key: {key}")
             return "hit", self.deserialize(cached_result)
-        
+
         # Cache MISS - cần gọi function
         logging.info(f"Cache MISS for key: {key}")
         return "miss", key
@@ -76,14 +82,18 @@ class StandardCache:
         - Tự động detect function type (sync/async)
         - Cache kết quả trong Redis với TTL
         """
+
         def inner(func):
             is_async = asyncio.iscoroutinefunction(func)
-            
+
             if is_async:
+
                 @wraps(func)
                 async def async_wrapper(*args, **kwargs):
-                    cache_result, data = self._cache_logic(func, args, kwargs, ttl, validatedModel, True)
-                    
+                    cache_result, data = self._cache_logic(
+                        func, args, kwargs, ttl, validatedModel, True
+                    )
+
                     if cache_result is None:  # Redis lỗi
                         return await func(*args, **kwargs)
                     elif cache_result == "hit":  # Cache HIT
@@ -92,13 +102,16 @@ class StandardCache:
                         result = await func(*args, **kwargs)
                         self._store_result(data, result, ttl, validatedModel)
                         return result
-                
+
                 return async_wrapper
             else:
+
                 @wraps(func)
                 def sync_wrapper(*args, **kwargs):
-                    cache_result, data = self._cache_logic(func, args, kwargs, ttl, validatedModel, False)
-                    
+                    cache_result, data = self._cache_logic(
+                        func, args, kwargs, ttl, validatedModel, False
+                    )
+
                     if cache_result is None:  # Redis lỗi
                         return func(*args, **kwargs)
                     elif cache_result == "hit":  # Cache HIT
@@ -107,21 +120,29 @@ class StandardCache:
                         result = func(*args, **kwargs)
                         self._store_result(data, result, ttl, validatedModel)
                         return result
-                
+
                 return sync_wrapper
-        
+
         return inner
-    
+
     def _store_result(self, key, result, ttl, validatedModel):
-        """Lưu kết quả vào cache với validation (nếu có)"""
+        """Lưu kết quả vào cache với validation (nếu có) --- Có 2 trường hợp lưu là 2 kết quả của Langchain và Guardrails"""
+        data_to_serialize = None
+        # Check if result is a Pydantic model
+        if hasattr(result, "model_dump"):
+            data_to_serialize = result.model_dump()
+        # Check if it's a list of Pydantic models
+        elif isinstance(result, list) and result and hasattr(result[0], "model_dump"):
+            data_to_serialize = [r.model_dump() for r in result]
+        # Otherwise, assume it's a dict or other JSON-serializable type
+        else:
+            data_to_serialize = result
+
         try:
-            serialized_result = self.serialize(result)
-        except TypeError:
-            # Handle Pydantic models
-            if isinstance(result, list):
-                serialized_result = self.serialize([r.model_dump() for r in result])
-            else:
-                serialized_result = self.serialize(result.model_dump())
+            serialized_result = self.serialize(data_to_serialize)
+        except TypeError as e:
+            logging.warning(f"Could not serialize result for key: {key}, error: {e}")
+            return  # Do not cache if serialization fails
 
         # Validation (optional)
         if validatedModel:
@@ -130,7 +151,7 @@ class StandardCache:
             except Exception as e:
                 logging.warning(f"Validation failed for key: {key}, error: {e}")
                 return  # Không cache nếu validation fail
- 
+
         # Store vào Redis
         self.set_key(key, serialized_result, ttl)
         logging.info(f"Cache STORED for key: {key}")

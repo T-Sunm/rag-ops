@@ -18,7 +18,7 @@ async def retrieve_restaurants(
     input: UserInput,
     rag_service: Rag = Depends(get_rag_service),
     guardrails: LLMRails = Depends(get_guardrails),
-    ):  
+):
     print("You are in rest api")
     response = await rag_service.get_response(
         question=input.user_input,

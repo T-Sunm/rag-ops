@@ -1,8 +1,6 @@
 prompts:
   - task: self_check_input
-    messages:
-      - type: user_message
-        content: |
+    content: |
           Your task is to check if the user message below complies with the policy for talking with the AI Enterprise bot.
 
           Policy for the user messages:
@@ -22,12 +20,10 @@ prompts:
           Question: Should the user message be blocked (Yes or No)?
           Answer:
 
-    output_parser: is_content_safe
+
 
   - task: self_check_output
-    messages:
-      - type: user_message
-        content: |
+    content: |
           Your task is to check if the bot message below complies with the policy.
 
           Policy for the bot:
@@ -43,26 +39,22 @@ prompts:
           Question: Should the message be blocked (Yes or No)?
           Answer:
 
-    output_parser: is_content_safe
+
 
   - task: self_check_facts
-    messages:
-      - type: user_message
-        content: |
-          Your task is to check if the following bot message contains factual inaccuracies or hallucinations.
+    content: |
+      Your task is to check if the following bot message contains factual inaccuracies or hallucinations.
 
-          Bot message: "{{ bot_response }}"
+      Bot message: "{{ bot_response }}"
 
-          Question: Does the message contain any factual inaccuracies or hallucinated information (Yes or No)?
-          Answer:
+      Question: Does the message contain any factual inaccuracies or hallucinated information (Yes or No)?
+      Answer:
 
 # ------------------------------------------------------------
   - task: content_safety_check_input $model=content_safety
-    messages:
-      - role: user
-        content: |
-          You are a policy expert trying to help determine whether a user prompt is in
-          violation of the defined safety policies.
+    content: |
+      You are a policy expert trying to help determine whether a user prompt is in
+      violation of the defined safety policies.
 
           <start_of_turn>
           Human Question: {{ user_input }}
@@ -89,11 +81,9 @@ prompts:
     output_parser: is_content_safe
   
   - task: content_safety_check_output $model=content_safety
-    messages:
-      - role: user
-        content: |
-          You are a policy expert trying to help determine whether the assistant’s response
-          is in violation of the defined safety policies.
+    content: |
+      You are a policy expert trying to help determine whether the assistant’s response
+      is in violation of the defined safety policies.
 
           <start_of_turn>
           Assistant Response: {{ assistant_response }}
