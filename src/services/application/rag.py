@@ -14,10 +14,6 @@ import uuid
 from nemoguardrails import LLMRails
 import os
 
-os.environ["LANGFUSE_PUBLIC_KEY"] = SETTINGS.LANGFUSE_PUBLIC_KEY
-os.environ["LANGFUSE_SECRET_KEY"] = SETTINGS.LANGFUSE_SECRET_KEY
-os.environ["LANGFUSE_HOST"] = SETTINGS.LANGFUSE_HOST
-
 
 class Rag:
     def __init__(self):
@@ -48,9 +44,7 @@ class Rag:
         self.tools = {"search_docs": self.search_tool}
 
         # Bind tools to LLM
-        self.llm_with_tools = self.llm.bind_tools(
-            list(self.tools.values())
-        ).with_config({"callbacks": [self.langfuse_handler]})
+        self.llm_with_tools = self.llm.bind_tools(list(self.tools.values()))
 
         # Initialize services
         self.generator_service = GeneratorService(
@@ -60,7 +54,7 @@ class Rag:
         )
 
         self.summarize_service = SummarizeService(
-            langfuse_handler=self.langfuse_handler
+            langfuse_handler=self.langfuse_handler,
         )
 
     def _get_session_history(self, session_id: str | None = None) -> list[dict]:
@@ -102,6 +96,8 @@ class Rag:
             chat_history = await self.summarize_service._summarize_and_truncate_history(
                 chat_history,
                 keep_last=4,
+                session_id=session_id,
+                user_id=user_id,
             )
             # cập nhật lại history đã rút gọn
             self.session_histories[session_id] = chat_history

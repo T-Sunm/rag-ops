@@ -1,6 +1,11 @@
 import uvicorn
 from src.config.settings import SETTINGS
 from src.utils.logger import logger
+import os
+
+os.environ["LANGFUSE_PUBLIC_KEY"] = SETTINGS.LANGFUSE_PUBLIC_KEY
+os.environ["LANGFUSE_SECRET_KEY"] = SETTINGS.LANGFUSE_SECRET_KEY
+os.environ["LANGFUSE_HOST"] = SETTINGS.LANGFUSE_HOST
 
 
 def main():

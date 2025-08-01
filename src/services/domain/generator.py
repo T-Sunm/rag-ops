@@ -43,10 +43,8 @@ class GeneratorService:
         """Helper method để update trace context và handler"""
         if session_id:
             self.langfuse.update_current_trace(session_id=session_id)
-            self.langfuse_handler.session_id = session_id
         if user_id:
             self.langfuse.update_current_trace(user_id=user_id)
-            self.langfuse_handler.user_id = user_id
 
     @observe(name="initial_llm_call")
     async def _initial_llm_call(
@@ -55,7 +53,16 @@ class GeneratorService:
         """Phase 1: Initial LLM call để kiểm tra tool calls"""
         self._update_trace_context(session_id, user_id)
         messages = self.prompt_userinput.get_langchain_prompt(question=question)
-        ai_msg = await self.llm_with_tools.ainvoke(messages)
+        ai_msg = await self.llm_with_tools.invoke(
+            messages,
+            {
+                "callbacks": [self.langfuse_handler],
+                "metadata": {  # trace attributes
+                    "langfuse_session_id": session_id,
+                    "langfuse_user_id": user_id,
+                },
+            },
+        )
         return ai_msg, messages
 
     async def _execute_tools(
@@ -138,7 +145,16 @@ class GeneratorService:
         )
 
         # Final LLM call - không cần callbacks vì đã có built-in
-        raw = await self.llm_with_tools.ainvoke(prompt)
+        raw = await self.llm_with_tools.invoke(
+            prompt,
+            {
+                "callbacks": [self.langfuse_handler],
+                "metadata": {
+                    "langfuse_session_id": session_id,
+                    "langfuse_user_id": user_id,
+                },
+            },
+        )
         content = raw.content if isinstance(raw.content, str) else str(raw.content)
         answer = self.clear_think.sub("", content).strip()
 
@@ -249,29 +265,10 @@ class GeneratorService:
             # Có tools - stream final response với observability
             self._update_trace_context(session_id, user_id)
             messages = result
-            full_response = ""
-            think_tag_passed = False
 
             # Không cần callbacks vì đã có built-in
             async for chunk in self.llm_with_tools.astream(messages):
-                if chunk.content:
-                    content = (
-                        chunk.content
-                        if isinstance(chunk.content, str)
-                        else str(chunk.content)
-                    )
-
-                    if not think_tag_passed:
-                        full_response += content
-                        if "</think>" in full_response:
-                            think_tag_passed = True
-                            # Yield phần sau </think>
-                            remaining = full_response.split("</think>", 1)[1]
-                            if remaining:
-                                yield remaining
-                    else:
-                        # Đã qua think tag, stream trực tiếp
-                        yield content
+                yield str(chunk.content)
 
         except Exception as e:
             logger.error(f"Error in generate_stream(): {e}")

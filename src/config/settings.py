@@ -16,25 +16,23 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # LLM Provider Selection
-    LLM_PROVIDER: str = "lmstudio"  # lmstudio | openai | ollama
+    LLM_PROVIDER: str = "litellm"  # lmstudio | openai | ollama
 
     # LM Studio Configuration
     LM_STUDIO_BASE_URL: str = "http://127.0.0.1:1234/v1"
     LM_STUDIO_API_KEY: str = "dummy"
     LM_STUDIO_MODEL: str = "qwen2.5-1.5b-instruct"
 
-    # OpenAI Configuration
-    OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-3.5-turbo"
-
-    # Ollama Configuration
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama2"
+    # Litellm Configuration
+    LITELLM_BASE_URL: str = "http://localhost:4000"
+    LITELLM_API_KEY: str = "sk-llmops"
+    LITELLM_MODEL: str = "qwen-instruct"
+    PROVIDER: str = "openai"
 
     # LLM Parameters
     LLMs_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 2048
-    LLM_STREAMING: bool = True
+    LLM_STREAMING: bool = False
 
     # Langfuse Configuration
     LANGFUSE_SECRET_KEY: Optional[str] = None
@@ -86,6 +84,13 @@ class Settings(BaseSettings):
                 "openai_api_key": "dummy",
                 "model": self.OLLAMA_MODEL,
             }
+        elif self.LLM_PROVIDER == "litellm":
+            return {
+                **base_config,
+                "base_url": self.LITELLM_BASE_URL,
+                "api_key": self.LITELLM_API_KEY,
+                "model": self.LITELLM_MODEL,
+            }
         else:
             raise ValueError(f"Unsupported LLM provider: {self.LLM_PROVIDER}")
 
@@ -93,7 +98,7 @@ class Settings(BaseSettings):
 SETTINGS = Settings()
 
 APP_CONFIGS: Dict[str, Any] = {
-    "title": "RAG Ops - Production Architecture Demo",
+    "title": "RAG Ops - Production Architecture",
     "description": "Clean architecture RAG system with multi-LLM provider support",
     "version": "1.0.0",
     "debug": SETTINGS.DEBUG,

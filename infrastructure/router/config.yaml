@@ -1,0 +1,42 @@
+model_list:
+  - model_name: qwen-instruct
+    litellm_params:
+      model: lm_studio/qwen2.5-1.5b-instruct
+      model_group: qwen_instruct_group  # Add model group
+      api_base: http://host.docker.internal:1234/v1
+      api_key: lm-studio  
+      tpm: 100000
+      rpm: 10000
+      weight: 5
+      max_parallel_requests : 10
+  - model_name: qwen-instruct
+    litellm_params:
+      model: lm_studio/qwen2.5-0.5b-instruct
+      model_group: qwen_instruct_group  # Add model group
+      api_base: http://host.docker.internal:1234/v1
+      api_key: lm-studio
+      tpm: 100000
+      rpm: 1000
+      weight: 1
+      max_parallel_requests : 10
+  - model_name: text-embedding-nomic-embed-text-v1.5
+    litellm_params:
+      model: lm_studio/text-embedding-nomic-embed-text-v1.5
+      api_base: http://host.docker.internal:1234/v1
+      api_key: lm-studio
+
+router_settings:
+  allowed_fails: 3 # cooldown model if it fails > 1 call in a minute. 
+  cooldown_time: 30 # (in seconds) how long to cooldown model if fails/min > allowed_fails
+  retry_policy:
+    BadRequestErrorRetries: 3
+    ContentPolicyViolationErrorRetries: 4
+  allowed_fails_policy:
+    ContentPolicyViolationErrorAllowedFails: 1000 # Allow 1000 ContentPolicyViolationError before cooling down a deployment
+    RateLimitErrorAllowedFails: 100 # Allow 100 RateLimitErrors before cooling down a deployment
+
+general_settings: 
+  master_key: sk-llmops # [OPTIONAL] Only use this if you to require all calls to contain this key (Authorization: Bearer sk-1234)
+
+litellm_settings:
+  drop_params: true  # for using embedding model with litellm
