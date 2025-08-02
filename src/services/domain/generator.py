@@ -11,7 +11,8 @@ import re
 from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 from langfuse import observe
-from src.cache.semantic_cache import semantic_cache
+from src.cache.semantic_cache import semantic_cache_llms
+from src.utils.text_processing import build_context
 
 
 class GeneratorService:
@@ -113,7 +114,7 @@ class GeneratorService:
         return messages, executed_tools
 
     @observe(name="rag_generation")
-    @semantic_cache.cache(namespace="rag_generation", distance_threshold=0.1, ttl=3600)
+    @semantic_cache_llms.cache(namespace="post-cache")
     async def _rag_generation(
         self,
         messages: list,
@@ -125,15 +126,7 @@ class GeneratorService:
         """Phase 3: RAG generation với context từ tools"""
         self._update_trace_context(session_id, user_id)
 
-        # Tạo context từ tool results
-        tool_results = []
-        for msg in messages:
-            if isinstance(msg, ToolMessage):
-                content = (
-                    msg.content if isinstance(msg.content, str) else str(msg.content)
-                )
-                tool_results.append(content)
-        context_str = "\n\n--- Retrieved Documents ---\n\n".join(tool_results)
+        context_str = build_context(messages)
 
         # RAG prompt với context
         prompt = self.prompt_rag.get_langchain_prompt(

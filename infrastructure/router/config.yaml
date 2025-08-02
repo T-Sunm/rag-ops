@@ -34,6 +34,10 @@ router_settings:
   allowed_fails_policy:
     ContentPolicyViolationErrorAllowedFails: 1000 # Allow 1000 ContentPolicyViolationError before cooling down a deployment
     RateLimitErrorAllowedFails: 100 # Allow 100 RateLimitErrors before cooling down a deployment
+  
+  redis_host: host.docker.internal
+  redis_port: 6378
+  redis_password: ""
 
 general_settings: 
   master_key: sk-llmops # [OPTIONAL] Only use this if you to require all calls to contain this key (Authorization: Bearer sk-1234)

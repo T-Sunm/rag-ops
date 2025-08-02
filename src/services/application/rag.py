@@ -1,4 +1,4 @@
-from src.cache.standard_cache import standard_cache
+from src.cache.semantic_cache import semantic_cache_llms
 from src.services.domain.generator import GeneratorService
 from src.services.domain.summarize import SummarizeService
 from langchain.tools import StructuredTool
@@ -6,13 +6,12 @@ from langchain_openai import ChatOpenAI
 from src.config.settings import SETTINGS
 from src.infrastructure.vector_stores.chroma_client import ChromaClientService
 from src.schemas.domain.retrieval import SearchArgs
-from src.utils import logger
+
 from langfuse import observe
 from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 import uuid
 from nemoguardrails import LLMRails
-import os
 
 
 class Rag:
@@ -77,7 +76,7 @@ class Rag:
             ]
         )
 
-    # @standard_cache.cache(ttl=300)
+    @semantic_cache_llms.cache(namespace="pre-cache")
     @observe(name="get_response")
     async def get_response(
         self,
