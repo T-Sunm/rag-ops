@@ -5,20 +5,24 @@ model_list:
       model_group: qwen_instruct_group  # Add model group
       api_base: http://host.docker.internal:1234/v1
       api_key: lm-studio  
-      tpm: 100000
-      rpm: 10000
+      tpm: 5000
+      rpm: 10
       weight: 5
       max_parallel_requests : 10
+      timeout: 300         # timeout cho call thường (tối đa 5 phút)
+      stream_timeout: 30
   - model_name: qwen-instruct
     litellm_params:
       model: lm_studio/qwen2.5-0.5b-instruct
       model_group: qwen_instruct_group  # Add model group
       api_base: http://host.docker.internal:1234/v1
       api_key: lm-studio
-      tpm: 100000
-      rpm: 1000
+      tpm: 5000
+      rpm: 10
       weight: 1
       max_parallel_requests : 10
+      timeout: 300         # timeout cho call thường (tối đa 5 phút)
+      stream_timeout: 30
   - model_name: text-embedding-nomic-embed-text-v1.5
     litellm_params:
       model: lm_studio/text-embedding-nomic-embed-text-v1.5
@@ -26,6 +30,7 @@ model_list:
       api_key: lm-studio
 
 router_settings:
+  routing_strategy: simple-shuffle
   allowed_fails: 3 # cooldown model if it fails > 1 call in a minute. 
   cooldown_time: 30 # (in seconds) how long to cooldown model if fails/min > allowed_fails
   retry_policy:

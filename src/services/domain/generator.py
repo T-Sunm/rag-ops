@@ -54,7 +54,7 @@ class GeneratorService:
         """Phase 1: Initial LLM call để kiểm tra tool calls"""
         self._update_trace_context(session_id, user_id)
         messages = self.prompt_userinput.get_langchain_prompt(question=question)
-        ai_msg = await self.llm_with_tools.invoke(
+        ai_msg = await self.llm_with_tools.ainvoke(
             messages,
             {
                 "callbacks": [self.langfuse_handler],
@@ -138,7 +138,7 @@ class GeneratorService:
         )
 
         # Final LLM call - không cần callbacks vì đã có built-in
-        raw = await self.llm_with_tools.invoke(
+        raw = await self.llm_with_tools.ainvoke(
             prompt,
             {
                 "callbacks": [self.langfuse_handler],
@@ -226,7 +226,11 @@ class GeneratorService:
             # Có tools - tiếp tục với RAG prompt
             messages = result  # type: ignore  # result is guaranteed to be list when has_tools is True
             answer = await self._rag_generation(
-                messages, question, updated_chat_history, session_id, user_id
+                messages=messages,
+                question=question,
+                chat_history=updated_chat_history,
+                session_id=session_id,
+                user_id=user_id,
             )
 
             return answer

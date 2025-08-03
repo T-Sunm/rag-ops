@@ -3,7 +3,7 @@ from langchain_core.messages import BaseMessage, ToolMessage
 
 
 def build_context(messages: List[BaseMessage]) -> str:
-    tool_chunks: []
+    tool_chunks = []
     for m in messages:
         if isinstance(m, ToolMessage):
             tool_chunks.append(str(m.content))

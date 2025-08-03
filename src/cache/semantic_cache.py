@@ -39,9 +39,9 @@ class SemanticCacheLLMs:
                 question = kwargs.get("question")
                 messages = kwargs.get("messages")
 
-                if messages:
+                if messages:  # post-cache
                     context_str = build_context(messages)
-                else:
+                else:  # pre-cache
                     context_str = question
 
                 # 1) Lookup

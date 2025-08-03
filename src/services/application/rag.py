@@ -116,12 +116,12 @@ class Rag:
                 options={"metadata": {"session_id": session_id, "user_id": user_id}},
             )
 
-            response_str = str(result.response)
+            response = result.response
             # Không cần lưu history nếu Guardrails block ; Nếu guardrails ok thì lưu
-            if "sorry" not in response_str.lower():
-                self._save_to_session_history(session_id, question, response_str)
+            if "sorry" not in str(response).lower():
+                self._save_to_session_history(session_id, question, str(response))
             return {
-                "response": response_str,
+                "response": response,
                 "session_id": session_id,
                 "user_id": user_id,
             }

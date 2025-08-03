@@ -48,7 +48,7 @@ class SummarizeService:
                 {old_conversation}"""
 
             # Call LLM để summary
-            summary_msg = await self.llm.invoke(
+            summary_msg = await self.llm.ainvoke(
                 summary_prompt,
                 {
                     "callbacks": [self.langfuse_handler],

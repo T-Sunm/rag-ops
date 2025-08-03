@@ -6,10 +6,10 @@ from src.services.application.rag import rag_service
 generator_service = rag_service.generator_service
 
 
-async def get_query_response(user_message, session_id, user_id):
+async def get_query_response(user_question, session_id, user_id):
     history = rag_service._get_session_history(session_id)
     print("length of history is ", len(history))
-    return await generator_service.generate(user_message, history, session_id, user_id)
+    return await generator_service.generate(user_question, history, session_id, user_id)
 
 
 @action(is_system_action=True)
@@ -27,10 +27,6 @@ async def user_query(context: Optional[dict] = None):
             context_content = message.get("content", {})
             session_id = context_content.get("session_id")
             user_id = context_content.get("user_id")
-    print("You are in nemoooooo")
-    print("session_id is ", session_id)
-    print("user_id is ", user_id)
-    print("user_question is ", user_question)
 
     if not user_question:
         return "Could not find user message in the context."
