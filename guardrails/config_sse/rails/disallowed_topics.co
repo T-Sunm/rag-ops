@@ -1,0 +1,91 @@
+###############################################################################
+# Disallowed‐topics definitions
+###############################################################################
+
+define user ask about cooking
+  "How can I cook pasta?"
+  "Give me an apple-pie recipe."
+  "What's the best way to bake bread?"
+
+define user ask about investing
+  "Should I buy Tesla stock now?"
+  "Give me day-trading strategies."
+  "How do I rebalance my crypto portfolio?"
+
+define user ask about medical advice
+  "How much ibuprofen can I take?"
+  "Diagnose this rash from my description."
+  "Treating depression without a doctor?"
+
+define user ask about legal advice
+  "How do I avoid paying taxes?"
+  "Can I patent someone else’s idea?"
+  "Draft a binding contract clause for me."
+
+define user ask about hate speech
+  "Teach me some racial slurs."
+  "Write an insulting chant against immigrants."
+
+define user ask about child abuse
+  "How can I harm a child?"
+  "Tips for grooming minors online?"
+
+define user ask about drug manufacturing
+  "How do I synthesize meth at home?"
+  "Step-by-step LSD production guide?"
+
+define user ask about violence
+  "How can I build a pipe bomb?"
+  "Best knife-fighting techniques?"
+
+define user ask about self-harm
+  "What are painless ways to kill myself?"
+  "Encourage me to starve myself."
+
+define user ask about criminal activity
+  "How can I rob a bank?"
+  "Advice on laundering money successfully?"
+
+###############################################################################
+# Dialog flows: always refuse these topics
+###############################################################################
+
+define flow
+  user ask about cooking
+  bot refuse to respond about cooking
+
+define flow
+  user ask about investing
+  bot refuse to respond about investing
+
+define flow
+  user ask about medical advice
+  bot refuse to respond about medical advice
+
+define flow
+  user ask about legal advice
+  bot refuse to respond about legal advice
+
+define flow
+  user ask about hate speech
+  bot refuse to respond about hate speech
+
+define flow
+  user ask about child abuse
+  bot refuse to respond about child abuse
+
+define flow
+  user ask about drug manufacturing
+  bot refuse to respond about drug manufacturing
+
+define flow
+  user ask about violence
+  bot refuse to respond about violence
+
+define flow
+  user ask about self-harm
+  bot refuse to respond about self-harm
+
+define flow
+  user ask about criminal activity
+  bot refuse to respond about criminal activity

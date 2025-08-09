@@ -19,7 +19,8 @@ prompts:
 
           Question: Should the user message be blocked (Yes or No)?
           Answer:
-
+          
+    output_parser: is_content_safe
 
 
   - task: self_check_output
@@ -39,7 +40,8 @@ prompts:
           Question: Should the message be blocked (Yes or No)?
           Answer:
 
-
+    output_parser: is_content_safe
+    
 
   - task: self_check_facts
     content: |
@@ -49,6 +51,8 @@ prompts:
 
       Question: Does the message contain any factual inaccuracies or hallucinated information (Yes or No)?
       Answer:
+      
+    output_parser: is_content_safe
 
 # ------------------------------------------------------------
   - task: content_safety_check_input $model=content_safety

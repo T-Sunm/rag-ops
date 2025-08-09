@@ -111,12 +111,13 @@ class Rag:
                 {"role": "user", "content": question},
             ]
             # Guardrails tự động chạy input→dialog→output rails
-            result = await guardrails.generate_async(
-                prompt=messages,
-                options={"metadata": {"session_id": session_id, "user_id": user_id}},
-            )
+            result = await guardrails.generate_async(prompt=messages)
 
-            response = result.response
+            if isinstance(result, str):  # Guardrails trả về string
+                response = result
+            elif hasattr(result, "response"):  # Cached trả về
+                response = result.response
+
             # Không cần lưu history nếu Guardrails block ; Nếu guardrails ok thì lưu
             if "sorry" not in str(response).lower():
                 self._save_to_session_history(session_id, question, str(response))
@@ -139,7 +140,13 @@ class Rag:
         self._save_to_session_history(session_id, question, rag_output)
         return {"response": rag_output, "session_id": session_id, "user_id": user_id}
 
-    async def get_sse_response(self, question: str, session_id: str, user_id: str):
+    async def get_sse_response(
+        self,
+        question: str,
+        session_id: str,
+        user_id: str,
+        guardrails: LLMRails | None = None,
+    ):
         # Lấy history từ memory
         chat_history = self._get_session_history(session_id)
         if len(chat_history) >= 6:
@@ -147,6 +154,22 @@ class Rag:
                 chat_history, 4
             )
             self.session_histories[session_id] = chat_history
+
+        # ———— Nếu có Guardrails thì dùng nó ————
+
+        if guardrails:
+            messages = [
+                {
+                    "role": "context",
+                    "content": {"session_id": session_id, "user_id": user_id},
+                },
+                {"role": "user", "content": question},
+            ]
+
+            async for message in guardrails.stream_async(prompt=messages):
+                yield f"event: responseUpdate\ndata: {message}\n\n"
+            yield "event: responseUpdate\ndata: [DONE]\n\n"
+            return
 
         # Collect full response để save sau
         full_response = ""

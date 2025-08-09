@@ -59,8 +59,14 @@ rails:
   output:
     flows:
       - self check output
+    streaming:
+       enabled: True
+       chunk_size: 200
+       context_size: 50
+
+streaming: True
   
   # rails:
   #   - path: rails/disallowed_topics.co
 
-# nemoguardrails server --config config --port 8008 --default-config-id guardrails
+# nemoguardrails server --config .\guardrails\config_sse --port 8008 --default-config-id guardrails

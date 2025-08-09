@@ -5,6 +5,7 @@ from langchain_redis import RedisSemanticCache
 from src.infrastructure.embeddings.embeddings import embedding_service
 from src.utils.text_processing import build_context
 from langchain_core.outputs import Generation
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,9 @@ class SemanticCacheLLMs:
                 hits: List[Generation] = self._cache.lookup(context_str, namespace)
                 if hits:
                     logger.debug("Cache-hit [%s]: %s", namespace, context_str)
-                    return hits[0].text
-
+                    txt = hits[0].text
+                    print(txt)
+                    return json.loads(txt)
                 # 2) Call LLM function
                 result = await func(*args, **kwargs)
 
