@@ -1,15 +1,33 @@
+import argparse
+import os
+
+parser = argparse.ArgumentParser(description="Run the RAG Ops application.")
+parser.add_argument(
+    "--provider",
+    choices=["lm-studio", "gemini", "groq"],
+    required=True,
+    help="Specify the LLM provider to use.",
+)
+
+# Use parse_known_args() to be compatible with uvicorn's reloader,
+# which might add its own arguments.
+args, _ = parser.parse_known_args()
+
+# Set the environment variables based on the provider
+os.environ["LITELLM_MODEL"] = args.provider
+os.environ["LITELLM_GUARDRAIL_MODEL"] = f"{args.provider}-guardrail"
+
+
 import uvicorn
 from src.config.settings import SETTINGS
 from src.utils.logger import logger
-import os
+from dotenv import load_dotenv
 
-os.environ["LANGFUSE_PUBLIC_KEY"] = SETTINGS.LANGFUSE_PUBLIC_KEY
-os.environ["LANGFUSE_SECRET_KEY"] = SETTINGS.LANGFUSE_SECRET_KEY
-os.environ["LANGFUSE_HOST"] = SETTINGS.LANGFUSE_HOST
+load_dotenv()
 
 
 def main():
-    # Log configuration
+    logger.info(f"Using provider: {SETTINGS.LITELLM_MODEL}")
     logger.info(f"HOST: {SETTINGS.HOST}")
     logger.info(f"PORT: {SETTINGS.PORT}")
 

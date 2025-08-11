@@ -57,7 +57,7 @@ class SemanticCacheLLMs:
 
                 # 3) Update cache
                 self._cache.update(
-                    context_str, namespace, [Generation(text=str(result))]
+                    context_str, namespace, [Generation(text=json.dumps(result))]
                 )
                 logger.debug("Cache-miss → stored [%s]: %s", namespace, context_str)
 

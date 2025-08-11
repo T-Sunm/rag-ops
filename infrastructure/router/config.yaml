@@ -1,8 +1,8 @@
 model_list:
-  - model_name: qwen-instruct
+# LM Studio
+  - model_name: lm-studio
     litellm_params:
       model: lm_studio/qwen2.5-1.5b-instruct
-      model_group: qwen_instruct_group  # Add model group
       api_base: http://host.docker.internal:1234/v1
       api_key: lm-studio  
       tpm: 5000
@@ -11,23 +11,65 @@ model_list:
       max_parallel_requests : 10
       timeout: 300         # timeout cho call thường (tối đa 5 phút)
       stream_timeout: 30
-  - model_name: qwen-instruct
+
+  - model_name: lm-studio
     litellm_params:
       model: lm_studio/qwen2.5-0.5b-instruct
-      model_group: qwen_instruct_group  # Add model group
       api_base: http://host.docker.internal:1234/v1
       api_key: lm-studio
       tpm: 5000
       rpm: 10
       weight: 1
       max_parallel_requests : 10
-      timeout: 300         # timeout cho call thường (tối đa 5 phút)
+      timeout: 300         
       stream_timeout: 30
-  - model_name: text-embedding-nomic-embed-text-v1.5
+  - model_name: lm-studio-guardrail
     litellm_params:
-      model: lm_studio/text-embedding-nomic-embed-text-v1.5
+      model: lm_studio/granite-guardian-3.0-2b
       api_base: http://host.docker.internal:1234/v1
       api_key: lm-studio
+      tpm: 5000
+      rpm: 10
+      weight: 1
+      max_parallel_requests : 10
+      timeout: 300         
+
+# Groq
+  - model_name: groq
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 5000
+      rpm: 10
+      weight: 2
+      max_parallel_requests : 10
+      timeout: 300         
+      stream_timeout: 30
+
+  - model_name: groq
+    litellm_params:
+      model: groq/llama-3.1-8b-instant
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 5000
+      rpm: 10
+      weight: 8
+      max_parallel_requests : 10
+      timeout: 300        
+      stream_timeout: 30
+  
+  - model_name: groq-guardrail
+    litellm_params:
+      model: groq/meta-llama/llama-prompt-guard-2-22m
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 5000
+      rpm: 10
+      max_parallel_requests : 10
+      timeout: 300         
+
+
 
 router_settings:
   routing_strategy: simple-shuffle
