@@ -165,7 +165,7 @@ After all infrastructure services are up and the data has been ingested, you can
 
 ```bash
 # Make sure you have activated your conda or venv environment
-python run.py
+python run.py --provider groq
 ```
 
 The API server will be available at **http://localhost:8000**.

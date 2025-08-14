@@ -33,7 +33,7 @@ class ChromaClientService:
 
     def retrieve_vector(
         self,
-        question: str,
+        query: str,
         top_k: int = 3,
         with_score: bool = False,
         metadata_filter: Dict[str, Any] = {},
@@ -45,7 +45,7 @@ class ChromaClientService:
         if with_score:
             docs_with_scores: List[Tuple[Document, float]] = (
                 self.client.similarity_search_with_score(
-                    question, k=top_k, filter=metadata_filter
+                    query, k=top_k, filter=metadata_filter
                 )
             )
             try:
@@ -56,6 +56,6 @@ class ChromaClientService:
 
         else:
             docs: List[Document] = self.client.similarity_search(
-                question, k=top_k, filter=metadata_filter
+                query, k=top_k, filter=metadata_filter
             )
             return _format_docs(docs)

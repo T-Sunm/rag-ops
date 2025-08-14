@@ -1,7 +1,7 @@
 models:
   - type: main
     engine: openai
-    model: "${LITELLM_GUARDRAIL_MODEL}"
+    model: "groq-guardrail"
     parameters:
       base_url:  "http://localhost:4000"
       api_key:   "sk-llmops"
@@ -10,7 +10,7 @@ models:
       timeout:    60
   - type: "content_safety"
     engine: openai
-    model: "${LITELLM_GUARDRAIL_MODEL}"
+    model: "groq-guardrail"
     parameters:
       base_url: "http://localhost:4000"
       api_key: "sk-llmops"
@@ -54,15 +54,15 @@ rails:
   input:
     flows:
       - self check input
-      - user query
+      # - user query # for sse, we don't need user query
 
   output:
     flows:
       - self check output
-    streaming:
-       enabled: True
-       chunk_size: 200
-       context_size: 50
+    # streaming: # for sse, we don't need streaming because we use external generator
+    #    enabled: True
+    #    chunk_size: 200
+    #    context_size: 50
 
 streaming: True
   

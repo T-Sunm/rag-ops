@@ -1,5 +1,5 @@
 from src.cache.semantic_cache import semantic_cache_llms
-from src.services.domain.generator import GeneratorService
+from src.services.domain.generator import RestApiGeneratorService, SSEGeneratorService
 from src.services.domain.summarize import SummarizeService
 from langchain.tools import StructuredTool
 from langchain_openai import ChatOpenAI
@@ -12,6 +12,7 @@ from langfuse.langchain import CallbackHandler
 from langfuse import get_client
 import uuid
 from nemoguardrails import LLMRails
+import json
 
 
 class Rag:
@@ -30,7 +31,7 @@ class Rag:
             description=(
                 "Retrieve documents from Chroma.\n"
                 "Args:\n"
-                "    question (str): the question.\n"
+                "    query (str): the query.\n"
                 "    top_k (int): the number of documents to retrieve.\n"
                 "    with_score (bool): whether to include similarity scores.\n"
                 "    metadata_filter (dict): filter by metadata.\n"
@@ -46,7 +47,12 @@ class Rag:
         self.llm_with_tools = self.llm.bind_tools(list(self.tools.values()))
 
         # Initialize services
-        self.generator_service = GeneratorService(
+        self.rest_generator_service = RestApiGeneratorService(
+            llm_with_tools=self.llm_with_tools,
+            tools=self.tools,
+            langfuse_handler=self.langfuse_handler,
+        )
+        self.sse_generator_service = SSEGeneratorService(
             llm_with_tools=self.llm_with_tools,
             tools=self.tools,
             langfuse_handler=self.langfuse_handler,
@@ -129,7 +135,7 @@ class Rag:
 
         # ———— Fallback: chạy RAG thường ————
 
-        rag_output = await self.generator_service.generate(
+        rag_output = await self.rest_generator_service.generate(
             question=question,
             chat_history=chat_history,
             session_id=session_id,
@@ -140,6 +146,9 @@ class Rag:
         self._save_to_session_history(session_id, question, rag_output)
         return {"response": rag_output, "session_id": session_id, "user_id": user_id}
 
+    # ----------------------------------------------SSE----------------------------------------------
+    @observe(name="get_sse_response")
+    @semantic_cache_llms.cache(namespace="pre-cache")
     async def get_sse_response(
         self,
         question: str,
@@ -147,16 +156,21 @@ class Rag:
         user_id: str,
         guardrails: LLMRails | None = None,
     ):
-        # Lấy history từ memory
+
         chat_history = self._get_session_history(session_id)
-        if len(chat_history) >= 6:
-            chat_history = await self.summarize_service._summarize_and_truncate_history(
-                chat_history, 4
-            )
-            self.session_histories[session_id] = chat_history
 
-        # ———— Nếu có Guardrails thì dùng nó ————
+        # Tạo async generator cho external LLM streaming
+        async def rag_token_generator(question, chat_history, session_id, user_id):
+            """External generator sử dụng generator_service để tạo tokens"""
+            async for message in self.sse_generator_service.generate_stream(
+                question=question,
+                chat_history=chat_history.copy(),  # Xài copy để tránh không edit vào chat_history gốc, để mỗi req đến ta chỉ lưu response cuối cùng
+                session_id=session_id,
+                user_id=user_id,
+            ):
+                yield message
 
+        # ———— Nếu có Guardrails thì dùng external generator ————
         if guardrails:
             messages = [
                 {
@@ -166,27 +180,45 @@ class Rag:
                 {"role": "user", "content": question},
             ]
 
-            async for message in guardrails.stream_async(prompt=messages):
-                yield f"event: responseUpdate\ndata: {message}\n\n"
-            yield "event: responseUpdate\ndata: [DONE]\n\n"
+            full_response = ""
+            # Sử dụng external generator với guardrails
+            async for chunk in guardrails.stream_async(
+                messages=messages,
+                generator=rag_token_generator(
+                    question, chat_history, session_id, user_id
+                ),
+            ):
+                full_response += chunk
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+            yield "event: end-of-stream\ndata: [DONE]\n\n"
+
+            # Save conversation
+            self._save_to_session_history(session_id, question, full_response)
             return
 
-        # Collect full response để save sau
+        # ———— Nếu không có Guardrails, streaming trực tiếp ————
         full_response = ""
-        async for message in self.generator_service.generate_stream(
-            question=question,
-            chat_history=chat_history.copy(),
-            session_id=session_id,
-            user_id=user_id,
+        async for message in rag_token_generator(
+            question, chat_history, session_id, user_id
         ):
             full_response += message
-            yield f"event: responseUpdate\ndata: {message}\n\n"
+            yield f"data: {json.dumps(message)}\n\n"
+
+        yield "event: end-of-stream\ndata: [DONE]\n\n"
 
         # Save conversation sau khi stream xong
         self._save_to_session_history(session_id, question, full_response)
 
-        # Kết thúc stream
-        yield "event: responseUpdate\ndata: [DONE]\n\n"
+        # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
+        current_history = self._get_session_history(session_id)
+        if len(current_history) >= 4:
+            summarized_history = (
+                await self.summarize_service._summarize_and_truncate_history(
+                    chat_history=current_history, keep_last=2
+                )
+            )
+            self.session_histories[session_id] = summarized_history
 
 
 rag_service = Rag()

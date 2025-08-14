@@ -14,7 +14,12 @@ generator_service = rag_service.generator_service
 async def get_query_response(user_question, session_id, user_id):
     history = rag_service._get_session_history(session_id)
     print("length of history is ", len(history))
-    return await generator_service.generate(user_question, history, session_id, user_id)
+    return await generator_service.generate(
+        user_question,
+        history.copy(),  # Xài copy để tránh không edit vào chat_history gốc, để mỗi req đến ta chỉ lưu response cuối cùng
+        session_id,
+        user_id,
+    )
 
 
 @action(is_system_action=True)

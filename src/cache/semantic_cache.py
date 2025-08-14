@@ -1,3 +1,5 @@
+import inspect
+import asyncio
 import logging
 from functools import wraps
 from typing import List, Any, Optional
@@ -17,7 +19,7 @@ class SemanticCacheLLMs:
         *,
         embeddings: Optional[Any] = None,
         distance_threshold: float = 0.2,
-        ttl: int = 60,
+        ttl: int = 20,
     ):
         self._cache = RedisSemanticCache(
             embeddings=embeddings or embedding_service,
@@ -35,35 +37,78 @@ class SemanticCacheLLMs:
 
     def cache(self, *, namespace: str):
         def inner(func):
-            @wraps(func)
-            async def wrapper(*args, **kwargs):
-                question = kwargs.get("question")
-                messages = kwargs.get("messages")
+            is_async_gen = inspect.isasyncgenfunction(func)
+            is_async_func = asyncio.iscoroutinefunction(func) and not is_async_gen
 
-                if messages:  # post-cache
-                    context_str = build_context(messages)
-                else:  # pre-cache
-                    context_str = question
+            if is_async_gen:  # for sse
 
-                # 1) Lookup
-                hits: List[Generation] = self._cache.lookup(context_str, namespace)
-                if hits:
-                    logger.debug("Cache-hit [%s]: %s", namespace, context_str)
-                    txt = hits[0].text
-                    print(txt)
-                    return json.loads(txt)
-                # 2) Call LLM function
-                result = await func(*args, **kwargs)
+                @wraps(func)
+                async def wrapper(*args, **kwargs):
+                    question = kwargs.get("question")
+                    messages = kwargs.get("messages")
 
-                # 3) Update cache
-                self._cache.update(
-                    context_str, namespace, [Generation(text=json.dumps(result))]
-                )
-                logger.debug("Cache-miss → stored [%s]: %s", namespace, context_str)
+                    if messages:  # post-cache
+                        context_str = build_context(messages)
+                    else:  # pre-cache
+                        context_str = question
 
-                return result
+                    # 1) Lookup
+                    hits: List[Generation] = self._cache.lookup(context_str, namespace)
+                    if hits:
+                        logger.info("SSE Cache-hit [%s]: %s", namespace, context_str)
+                        txt = hits[0].text
+                        print(txt)
+                        cached_chunks = json.loads(txt)
+                        for chunk in cached_chunks:
+                            yield chunk
+                        return
+                    # 2) Call LLM function
+                    result_chunks = []
+                    async for chunk in func(*args, **kwargs):
+                        result_chunks.append(chunk)
+                        yield chunk
 
-            return wrapper
+                    # 3) Update cache
+                    self._cache.update(
+                        context_str,
+                        namespace,
+                        [Generation(text=json.dumps(result_chunks))],
+                    )
+                    logger.info("SSE Cache-miss [%s]: %s", namespace, context_str)
+                    return
+
+                return wrapper
+            elif is_async_func:  # for restAPI
+
+                @wraps(func)
+                async def wrapper(*args, **kwargs):
+                    question = kwargs.get("question")
+                    messages = kwargs.get("messages")
+
+                    if messages:  # post-cache
+                        context_str = build_context(messages)
+                    else:  # pre-cache
+                        context_str = question
+
+                    # 1) Lookup
+                    hits: List[Generation] = self._cache.lookup(context_str, namespace)
+                    if hits:
+                        logger.debug("Cache-hit [%s]: %s", namespace, context_str)
+                        txt = hits[0].text
+                        print(txt)
+                        return json.loads(txt)
+                    # 2) Call LLM function
+                    result = await func(*args, **kwargs)
+
+                    # 3) Update cache
+                    self._cache.update(
+                        context_str, namespace, [Generation(text=json.dumps(result))]
+                    )
+                    logger.debug("Cache-miss → stored [%s]: %s", namespace, context_str)
+
+                    return result
+
+                return wrapper
 
         return inner
 

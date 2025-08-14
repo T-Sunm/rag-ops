@@ -59,17 +59,11 @@ class SummarizeService:
                 },
             )
 
-            summary_content = (
-                summary_msg.content
-                if isinstance(summary_msg.content, str)
-                else str(summary_msg.content)
-            )
-
             # Tạo history mới: summary + remaining messages
             summarized_history = [
                 {
                     "role": "system",
-                    "content": f"Previous conversation summary: {summary_content}",
+                    "content": f"Previous conversation summary: {summary_msg.content}",
                 }
             ] + remaining_messages
 

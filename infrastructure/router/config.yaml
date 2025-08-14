@@ -40,8 +40,8 @@ model_list:
       model: groq/llama-3.3-70b-versatile
       api_base: https://api.groq.com/openai/v1
       api_key: os.environ/GROQ_API_KEY
-      tpm: 5000
-      rpm: 10
+      tpm: 50000
+      rpm: 100
       weight: 2
       max_parallel_requests : 10
       timeout: 300         
@@ -52,8 +52,8 @@ model_list:
       model: groq/llama-3.1-8b-instant
       api_base: https://api.groq.com/openai/v1
       api_key: os.environ/GROQ_API_KEY
-      tpm: 5000
-      rpm: 10
+      tpm: 50000
+      rpm: 100
       weight: 8
       max_parallel_requests : 10
       timeout: 300        
@@ -64,8 +64,8 @@ model_list:
       model: groq/meta-llama/llama-prompt-guard-2-22m
       api_base: https://api.groq.com/openai/v1
       api_key: os.environ/GROQ_API_KEY
-      tpm: 5000
-      rpm: 10
+      tpm: 50000
+      rpm: 100
       max_parallel_requests : 10
       timeout: 300         
 
@@ -76,6 +76,12 @@ router_settings:
   allowed_fails: 3 # cooldown model if it fails > 1 call in a minute. 
   cooldown_time: 30 # (in seconds) how long to cooldown model if fails/min > allowed_fails
   retry_policy:
+  # for error request to llm
+    APIConnectionErrorRetries: 3
+    RateLimitErrorRetries: 3
+    APITimeoutErrorRetries: 3
+    ServiceUnavailableErrorRetries: 3
+
     BadRequestErrorRetries: 3
     ContentPolicyViolationErrorRetries: 4
   allowed_fails_policy:
