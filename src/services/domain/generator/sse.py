@@ -1,5 +1,4 @@
 from .base import BaseGeneratorService
-from langfuse import observe
 from src.utils import logger
 from src.utils.text_processing import build_context
 from langchain_core.messages import AIMessage, SystemMessage
@@ -9,7 +8,6 @@ from src.cache.semantic_cache import semantic_cache_llms
 class SSEGeneratorService(BaseGeneratorService):
     """Generator service dành cho SSE với streaming response và RAG integration"""
 
-    @observe(name="initial_llm_call_sse")
     async def _initial_llm_call(
         self,
         question: str,
@@ -38,7 +36,6 @@ class SSEGeneratorService(BaseGeneratorService):
         ):
             yield event, messages
 
-    @observe(name="create_message_sse")
     async def _create_message(
         self,
         question: str,
@@ -84,7 +81,6 @@ class SSEGeneratorService(BaseGeneratorService):
             )
             yield True, messages
 
-    @observe(name="rag_generation_sse")
     @semantic_cache_llms.cache(namespace="post-cache")
     async def _rag_generation(
         self,
@@ -122,7 +118,6 @@ class SSEGeneratorService(BaseGeneratorService):
             content = chunk.content if hasattr(chunk, "content") else str(chunk)
             yield content
 
-    @observe(name="generate_stream")
     async def generate_stream(
         self,
         question: str,
@@ -130,31 +125,47 @@ class SSEGeneratorService(BaseGeneratorService):
         session_id: str | None = None,
         user_id: str | None = None,
     ):
-        """Generate streaming response với RAG integration"""
+        """Generate streaming response with RAG integration"""
         try:
             if chat_history is None:
                 chat_history = []
 
-            # Iterate through the async generator to get streaming content or result tool calls
             is_tool_call = False
-            async for has_tools, data in self._create_message(
-                question, chat_history, session_id, user_id
-            ):
-                if has_tools:
-                    is_tool_call = has_tools
-                    messages = data
-                else:
-                    yield data
+            messages = None
+
+            # Create a span for the message creation part
+            with self.langfuse.start_as_current_span(
+                name="create_message_sse"
+            ) as create_message_span:
+                async for has_tools, data in self._create_message(
+                    question, chat_history, session_id, user_id
+                ):
+                    if has_tools:
+                        is_tool_call = True
+                        messages = data
+                    else:
+                        yield data
+                # Update the span with the result of this step
+                create_message_span.update(output={"is_tool_call": is_tool_call})
 
             if is_tool_call:
-                async for chunk in self._rag_generation(
-                    messages=messages,
-                    question=question,
-                    chat_history=chat_history,
-                    session_id=session_id,
-                    user_id=user_id,
-                ):
-                    yield chunk
+                # Create a span for the RAG generation part
+                with self.langfuse.start_as_current_span(
+                    name="rag_generation_sse"
+                ) as rag_span:
+                    # We need to collect the response to update the span
+                    full_rag_response = ""
+                    async for chunk in self._rag_generation(
+                        messages=messages,
+                        question=question,
+                        chat_history=chat_history,
+                        session_id=session_id,
+                        user_id=user_id,
+                    ):
+                        full_rag_response += chunk
+                        yield chunk
+                    # Update the span with the full response
+                    rag_span.update(output=full_rag_response)
 
         except Exception as e:
             logger.error(f"Error in generate_stream(): {e}")
