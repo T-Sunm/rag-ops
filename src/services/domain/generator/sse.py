@@ -58,14 +58,36 @@ class SSEGeneratorService(BaseGeneratorService):
             if kind == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]
                 # Lấy content text nếu có
-                if chunk.content:
+                if chunk.content and not chunk.content.startswith("<function="):
                     full_response_content += chunk.content
                     yield False, chunk.content
 
+                # Hợp nhất kiểm tra tool call:
+                # 1. Kiểm tra trường tool_calls chính thức
+                # 2. Kiểm tra content có phải là tool call trá hình không (tools call trá hình là dạng <function=tool_name>, ví dụ: <function=search>)
+                has_tool_calls_in_kwargs = (
+                    chunk.additional_kwargs
+                    and "tool_calls" in chunk.additional_kwargs
+                    and chunk.additional_kwargs["tool_calls"]
+                )
+                is_content_a_tool_call = chunk.content.startswith("<function=")
+
                 if (
-                    chunk.tool_calls and not tool_call_detected
-                ):  # only add tool call once
-                    tool_calls.extend(chunk.additional_kwargs["tool_calls"])
+                    has_tool_calls_in_kwargs or is_content_a_tool_call
+                ) and not tool_call_detected:
+                    # Nếu tool call nằm trong content, chúng ta cần tạo lại cấu trúc tool_call
+                    if is_content_a_tool_call:
+                        # Đây là một giả định đơn giản, cần điều chỉnh nếu định dạng phức tạp hơn
+                        tool_name = chunk.content.split("=")[1].strip(">")
+                        reconstructed_tool_call = {
+                            "id": f"call_{tool_name}",
+                            "function": {"name": tool_name, "arguments": "{}"},
+                            "type": "function",
+                        }
+                        tool_calls.append(reconstructed_tool_call)
+                    else:
+                        tool_calls.extend(chunk.additional_kwargs["tool_calls"])
+
                     tool_call_detected = True
 
         # Phase 2: if tool call, execute tools and return messages

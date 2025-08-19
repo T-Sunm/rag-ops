@@ -8,7 +8,6 @@ from src.services.application.rag import rag_service
 from src.config.settings import APP_CONFIGS, SETTINGS
 from nemoguardrails import LLMRails, RailsConfig
 
-
 tracemalloc.start()
 
 
@@ -28,10 +27,16 @@ logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.rag_service = rag_service
+
+    # --- REST API Guardrails Setup ---
     config_restapi = RailsConfig.from_path("guardrails/config_restapi")
+    rails_restapi = LLMRails(config_restapi)
+    app.state.rails_restapi = rails_restapi
+
+    # --- SSE Guardrails Setup ---
     config_sse = RailsConfig.from_path("guardrails/config_sse")
-    app.state.rails_restapi = LLMRails(config_restapi)
-    app.state.rails_sse = LLMRails(config_sse)
+    rails_sse = LLMRails(config_sse)
+    app.state.rails_sse = rails_sse
 
     yield
 

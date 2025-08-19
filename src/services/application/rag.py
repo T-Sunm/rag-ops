@@ -117,7 +117,9 @@ class Rag:
                 {"role": "user", "content": question},
             ]
             # Guardrails tự động chạy input→dialog→output rails
-            result = await guardrails.generate_async(prompt=messages)
+            result = await guardrails.generate_async(
+                prompt=messages, options={"rails": ["input"]}
+            )
 
             if isinstance(result, str):  # Guardrails trả về string
                 response = result

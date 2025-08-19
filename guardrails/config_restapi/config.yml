@@ -6,7 +6,7 @@ models:
       base_url:  "http://localhost:4000"
       api_key:   "sk-llmops"
       temperature: 0.7
-      max_tokens: 4096
+      max_tokens: 512  
       timeout:    60
   - type: "content_safety"
     engine: openai
@@ -15,7 +15,7 @@ models:
       base_url: "http://localhost:4000"
       api_key: "sk-llmops"
       temperature: 0.7
-      max_tokens: 4096
+      max_tokens: 512  
       timeout: 60
       
 
@@ -55,6 +55,7 @@ rails:
     flows:
       - self check input
       - user query
+
 
   output:
     flows:

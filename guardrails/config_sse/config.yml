@@ -53,6 +53,17 @@ sample_conversation: |
 rails:
   input:
     flows:
+      - check cooking
+      - check investing
+      - check medical advice
+      - check legal advice
+      - check hate speech
+      - check child abuse
+      - check drug manufacturing
+      - check violence
+      - check self-harm
+      - check criminal activity
+      - check revenge strategies 
       - self check input
       # - user query # for sse, we don't need user query
 
@@ -66,7 +77,4 @@ rails:
 
 streaming: True
   
-  # rails:
-  #   - path: rails/disallowed_topics.co
-
 # nemoguardrails server --config .\guardrails\config_sse --port 8008 --default-config-id guardrails
