@@ -1,23 +1,29 @@
 models:
   - type: main
     engine: openai
-    model: "groq-guardrail"
+    model: "groq"
     parameters:
       base_url:  "http://localhost:4000"
       api_key:   "sk-llmops"
       temperature: 0.7
       max_tokens: 4096
       timeout:    60
-  - type: "content_safety"
+  - type: self_check_input
     engine: openai
-    model: "groq-guardrail"
+    model: "groq-guardrail-classification" 
     parameters:
       base_url: "http://localhost:4000"
       api_key: "sk-llmops"
-      temperature: 0.7
-      max_tokens: 4096
-      timeout: 60
-      
+      temperature: 0.0 
+      max_tokens: 10
+  - type: self_check_output
+    engine: openai
+    model: "groq-guardrail-chat" 
+    parameters:
+      base_url: "http://localhost:4000"
+      api_key: "sk-llmops"
+      temperature: 0.0
+      max_tokens: 10
 
 instructions:
   - type: general
@@ -70,10 +76,10 @@ rails:
   output:
     flows:
       - self check output
-    # streaming: # for sse, we don't need streaming because we use external generator
-    #    enabled: True
-    #    chunk_size: 200
-    #    context_size: 50
+    streaming:
+       enabled: True
+       chunk_size: 200
+       context_size: 50
 
 streaming: True
   

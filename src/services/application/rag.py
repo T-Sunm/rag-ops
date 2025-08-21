@@ -195,9 +195,9 @@ class Rag:
                     ),
                 ):
                     full_response += chunk
-                    yield f"data: {json.dumps(chunk)}\n\n"
+                    yield f"{json.dumps(chunk)}\n\n"
 
-                yield "event: end-of-stream\ndata: [DONE]\n\n"
+                yield "event: end-of-stream"
 
                 # Save conversation
                 self._save_to_session_history(session_id, question, full_response)
@@ -210,9 +210,9 @@ class Rag:
                 question, chat_history, session_id, user_id
             ):
                 full_response += message
-                yield f"data: {json.dumps(message)}\n\n"
+                yield f"{json.dumps(message)}\n\n"
 
-            yield "event: end-of-stream\ndata: [DONE]\n\n"
+            yield "event: end-of-stream"
 
             # Save conversation sau khi stream xong
             self._save_to_session_history(session_id, question, full_response)

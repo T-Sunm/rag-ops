@@ -1,3 +1,18 @@
+"""
+    A semantic cache for LLM responses that supports both REST API and SSE.
+
+    This class provides a decorator-based caching mechanism that intelligently handles
+    two types of function returns:
+    1.  **Async Functions (for REST API):** Caches the final, complete string response.
+    2.  **Async Generator Functions (for SSE):** Caches both the individual streamed chunks and the full concatenated response.
+
+    The caching strategy is designed for interoperability. When a cache lookup occurs:
+    - A REST API call can retrieve a full response that was originally cached from an SSE stream by using the stored `full_response`.
+    - An SSE stream can retrieve a response cached by a REST API call and stream it back character-by-character to the client, preserving the streaming experience.
+
+    This prevents compatibility issues where one service type tries to use a cache entry from another, such as a REST API endpoint encountering an array of chunks from an SSE cache.
+"""
+
 import inspect
 import asyncio
 import logging
@@ -58,21 +73,49 @@ class SemanticCacheLLMs:
                         logger.info("SSE Cache-hit [%s]: %s", namespace, context_str)
                         txt = hits[0].text
                         print(txt)
-                        cached_chunks = json.loads(txt)
-                        for chunk in cached_chunks:
-                            yield chunk
-                        return
+
+                        try:
+                            cached_data = json.loads(txt)
+                            # Check if it's the new format with both chunks and full_response
+                            if (
+                                isinstance(cached_data, dict)
+                                and "full_response" in cached_data
+                            ):
+                                # Yield the full response as one chunk instead of character by character
+                                yield cached_data["full_response"]
+                                return
+                            # Check if it's old chunk array format
+                            elif isinstance(cached_data, list):
+                                for chunk in cached_data:
+                                    yield chunk
+                                return
+                            # Otherwise it's already a string - yield as one chunk
+                            else:
+                                yield cached_data
+                                return
+                        except (json.JSONDecodeError, TypeError):
+                            # Fallback: yield as one chunk
+                            yield txt
+                            return
+
                     # 2) Call LLM function
                     result_chunks = []
+                    full_response = ""
                     async for chunk in func(*args, **kwargs):
                         result_chunks.append(chunk)
+                        full_response += chunk
                         yield chunk
 
-                    # 3) Update cache
+                    # 3) Update cache - lưu cả chunks và full response để tương thích
+                    cache_data = {
+                        "type": "sse_response",
+                        "chunks": result_chunks,
+                        "full_response": full_response,
+                    }
                     self._cache.update(
                         context_str,
                         namespace,
-                        [Generation(text=json.dumps(result_chunks))],
+                        [Generation(text=json.dumps(cache_data))],
                     )
                     logger.info("SSE Cache-miss [%s]: %s", namespace, context_str)
                     return
@@ -96,13 +139,35 @@ class SemanticCacheLLMs:
                         logger.debug("Cache-hit [%s]: %s", namespace, context_str)
                         txt = hits[0].text
                         print(txt)
-                        return json.loads(txt)
+
+                        try:
+                            cached_data = json.loads(txt)
+                            # Check if it's the new format with both chunks and full_response
+                            if (
+                                isinstance(cached_data, dict)
+                                and "full_response" in cached_data
+                            ):
+                                return cached_data["full_response"]
+                            # Check if it's old chunk array format
+                            elif isinstance(cached_data, list):
+                                # Join chunks to create full response
+                                return "".join(cached_data)
+                            # Otherwise it's already a string
+                            else:
+                                return cached_data
+                        except (json.JSONDecodeError, TypeError):
+                            # Fallback: return as is
+                            return txt
+
                     # 2) Call LLM function
                     result = await func(*args, **kwargs)
 
-                    # 3) Update cache
+                    # 3) Update cache - lưu theo format mới để tương thích
+                    cache_data = {"type": "rest_response", "full_response": result}
                     self._cache.update(
-                        context_str, namespace, [Generation(text=json.dumps(result))]
+                        context_str,
+                        namespace,
+                        [Generation(text=json.dumps(cache_data))],
                     )
                     logger.debug("Cache-miss → stored [%s]: %s", namespace, context_str)
 
