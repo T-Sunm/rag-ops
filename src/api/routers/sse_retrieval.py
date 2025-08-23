@@ -29,7 +29,7 @@ async def retrieve_restaurants(
         async def generate_response():
             # Gửi metadata trước
             metadata = {"session_id": session_id, "user_id": user_id}
-            yield f"event: metadata\ndata: {json.dumps(metadata)}\n\n"
+            yield f"metadata: {json.dumps(metadata)}\n\n"
 
             # Stream response
             async for chunk in rag_service.get_sse_response(
@@ -45,4 +45,4 @@ async def retrieve_restaurants(
             media_type="text/event-stream",
         )
     except asyncio.TimeoutError:
-        return StreamingResponse("event: responseUpdate\ndata: [Timeout reached.]")
+        return StreamingResponse("responseUpdate: [Timeout reached.]")

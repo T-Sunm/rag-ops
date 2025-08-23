@@ -13,6 +13,7 @@ from langfuse import get_client
 import uuid
 from nemoguardrails import LLMRails
 import json
+from src.utils.text_processing import is_guardrails_error
 
 
 class Rag:
@@ -91,21 +92,7 @@ class Rag:
         user_id: str | None = None,
         guardrails: LLMRails | None = None,
     ):
-        # ———— ID Normalization ————
-        session_id = session_id or str(uuid.uuid4())
-        user_id = user_id or f"user_{uuid.uuid4().hex[:8]}"
-
-        # ———— History Retrieval & Summarization ————
         chat_history = self._get_session_history(session_id)
-        if len(chat_history) >= 6:
-            chat_history = await self.summarize_service._summarize_and_truncate_history(
-                chat_history,
-                keep_last=4,
-                session_id=session_id,
-                user_id=user_id,
-            )
-            # cập nhật lại history đã rút gọn
-            self.session_histories[session_id] = chat_history
 
         # ———— Nếu có Guardrails thì dùng nó ————
         if guardrails:
@@ -117,23 +104,24 @@ class Rag:
                 {"role": "user", "content": question},
             ]
             # Guardrails tự động chạy input→dialog→output rails
-            result = await guardrails.generate_async(
-                prompt=messages, options={"rails": ["input"]}
-            )
+            result = await guardrails.generate_async(prompt=messages)
 
-            if isinstance(result, str):  # Guardrails trả về string
-                response = result
-            elif hasattr(result, "response"):  # Cached trả về
-                response = result.response
+            if is_guardrails_error(result):
+                blocked_response = "I'm sorry, but I cannot provide a response to that request. The content was blocked by our safety guidelines."
+                return blocked_response
 
             # Không cần lưu history nếu Guardrails block ; Nếu guardrails ok thì lưu
-            if "sorry" not in str(response).lower():
-                self._save_to_session_history(session_id, question, str(response))
-            return {
-                "response": response,
-                "session_id": session_id,
-                "user_id": user_id,
-            }
+            self._save_to_session_history(session_id, question, str(result))
+            # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
+            current_history = self._get_session_history(session_id)
+            if len(current_history) >= 4:
+                summarized_history = (
+                    await self.summarize_service._summarize_and_truncate_history(
+                        chat_history=current_history, keep_last=2
+                    )
+                )
+                self.session_histories[session_id] = summarized_history
+            return str(result)
 
         # ———— Fallback: chạy RAG thường ————
 
@@ -146,7 +134,16 @@ class Rag:
 
         # lưu lại history sau khi RAG trả về
         self._save_to_session_history(session_id, question, rag_output)
-        return {"response": rag_output, "session_id": session_id, "user_id": user_id}
+        # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
+        current_history = self._get_session_history(session_id)
+        if len(current_history) >= 4:
+            summarized_history = (
+                await self.summarize_service._summarize_and_truncate_history(
+                    chat_history=current_history, keep_last=2
+                )
+            )
+            self.session_histories[session_id] = summarized_history
+        return rag_output
 
     # ----------------------------------------------SSE----------------------------------------------
     @semantic_cache_llms.cache(namespace="pre-cache")
@@ -186,6 +183,7 @@ class Rag:
                     {"role": "user", "content": question},
                 ]
 
+                is_blocked = False
                 full_response = ""
                 # Sử dụng external generator với guardrails
                 async for chunk in guardrails.stream_async(
@@ -195,13 +193,30 @@ class Rag:
                     ),
                 ):
                     full_response += chunk
-                    yield f"{json.dumps(chunk)}\n\n"
 
-                yield "event: end-of-stream"
+                    # Check if this chunk indicates blocking
+                    if is_guardrails_error(chunk):
+                        is_blocked = True
+                        # Send a clean error message instead
+                        error_message = "I'm sorry, but I cannot provide a response to that request."
+                        yield f"{json.dumps(error_message)}\n\n"
+                        break
+                    else:
+                        yield f"{json.dumps(chunk)}\n\n"
 
-                # Save conversation
-                self._save_to_session_history(session_id, question, full_response)
-                span.update(output=full_response)
+                # Only save to history if not blocked
+                if not is_blocked:
+                    self._save_to_session_history(session_id, question, full_response)
+                    span.update(output=full_response)
+                    # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
+                    current_history = self._get_session_history(session_id)
+                    if len(current_history) >= 4:
+                        summarized_history = await self.summarize_service._summarize_and_truncate_history(
+                            chat_history=current_history, keep_last=2
+                        )
+                        self.session_histories[session_id] = summarized_history
+                else:
+                    span.update(output="Request blocked by guardrails")
                 return
 
             # ———— Nếu không có Guardrails, streaming trực tiếp ————
@@ -211,8 +226,6 @@ class Rag:
             ):
                 full_response += message
                 yield f"{json.dumps(message)}\n\n"
-
-            yield "event: end-of-stream"
 
             # Save conversation sau khi stream xong
             self._save_to_session_history(session_id, question, full_response)

@@ -265,7 +265,7 @@ curl -X 'POST' \
 - **MinIO Console**: http://localhost:9001
 - **Redis Commander**: http://localhost:8081 (if enabled in cache stack)
 - **LM Studio**: Local application (if using local LLM)
-
+- **Open WebUI**: http://localhost:7000 - http://host.docker.internal:9099
 
 #### LM Studio Connection Issues
 

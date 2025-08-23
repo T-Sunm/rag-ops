@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, status
 from nemoguardrails import LLMRails
 from src.api.dependencies.rag import get_rag_service
@@ -19,12 +20,19 @@ async def retrieve_restaurants(
     rag_service: Rag = Depends(get_rag_service),
     guardrails: LLMRails = Depends(get_guardrails_restapi),
 ):
+    # ———— ID Normalization ————
+    session_id = input.session_id or str(uuid.uuid4())
+    user_id = input.user_id or f"user_{uuid.uuid4().hex[:8]}"
     print("You are in rest api")
     response = await rag_service.get_response(
         question=input.user_input,
-        session_id=input.session_id,
-        user_id=input.user_id,
+        session_id=session_id,
+        user_id=user_id,
         guardrails=guardrails,
     )
 
-    return response
+    return ResponseOutput(
+        response=response,  # ✅ response đã là string
+        session_id=session_id,
+        user_id=user_id,
+    )
