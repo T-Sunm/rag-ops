@@ -14,23 +14,27 @@ conda activate open-webui
 pip install open-webui
 ```
 
-### Bước 2: Chạy Pipelines qua Docker
-
-```bash
-docker stop pipelines
-docker rm pipelines
-docker run -d -p 9099:9099 --add-host=host.docker.internal:host-gateway -v "${PWD}/pipelines:/app/pipelines" --name pipelines --restart always ghcr.io/open-webui/pipelines:main
-```
-
-### Bước 3: Khởi động hệ thống
+### Bước 2: Khởi động OpenWebui
 ```bash
 # Chạy Open WebUI
 open-webui serve --port 7000
 
 # Truy cập http://localhost:7000
 # Kết nối Pipelines: Admin Panel > Settings > Connections
-# API URL: http://host.docker.internal:9099, API Key: 0p3n-w3bu!
+# API URL: http://localhost:9099, API Key: 0p3n-w3bu!
 ```
+
+
+### Bước 3: Chạy Pipelines qua Docker
+
+```bash
+cd pipelines
+docker stop pipelines
+docker rm pipelines
+docker run -d -p 9099:9099 --add-host=host.docker.internal:host-gateway -v "${PWD}/pipelines:/app/pipelines" --name pipelines --restart always ghcr.io/open-webui/pipelines:main
+```
+
+
 
 ## Hướng dẫn cho nhà phát triển
 

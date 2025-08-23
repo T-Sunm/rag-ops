@@ -95,7 +95,18 @@ class SemanticCacheLLMs:
                     # 2) Call LLM function
                     full_response = ""
                     async for chunk in func(*args, **kwargs):
-                        full_response += chunk
+                        clean_chunk = chunk.replace("\n\n", "")
+
+                        #  Try to decode JSON if it looks like JSON (starts and ends with quotes)
+                        if clean_chunk.strip().startswith(
+                            '"'
+                        ) and clean_chunk.strip().endswith('"'):
+                            # This is likely JSON-encoded text from RAG service
+                            decoded_chunk = json.loads(clean_chunk)
+                            full_response += decoded_chunk
+                        else:
+                            full_response += clean_chunk
+
                         yield chunk
 
                     # 3) Update cache with clean full response
