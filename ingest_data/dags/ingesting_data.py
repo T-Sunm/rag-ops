@@ -19,14 +19,22 @@ from plugins.jobs.load_and_chunk import LoadAndChunk
 from plugins.jobs.embed_and_store import EmbedAndStore
 from airflow.operators.empty import EmptyOperator
 
+
+def sanitize_bucket_name(name: str) -> str:
+    """Convert dataset name to valid S3/MinIO bucket name."""
+    return name.replace("_", "-").lower()
+
+
 # Configuration - có thể set qua Airflow Variables
 DATASET_NAME = os.getenv("DATASET_NAME", "environment_battery")  # Default dataset
 dataset_folder = os.getenv("INLINE_DATA_VOLUME")
 directory_chromadb = os.getenv("PERSIST_DIRECTORY")
 
-# Dynamic naming based on dataset
-MINIO_PATH = f"rag-pipeline-{DATASET_NAME}/chunks.pkl"
-collection_name = f"rag-pipeline-{DATASET_NAME}"
+# Dynamic naming with sanitized bucket name
+MINIO_PATH = f"rag-pipeline-{sanitize_bucket_name(DATASET_NAME)}/chunks.pkl"
+collection_name = (
+    f"rag-pipeline-{DATASET_NAME}"  # ChromaDB collection có thể dùng underscore
+)
 dataset_subfolder = os.path.join(dataset_folder, DATASET_NAME)
 
 default_args = {
@@ -48,14 +56,18 @@ def start_task():
 
     dataset_files = DATASETS[DATASET_NAME]["data"]
 
-    for file_link in dataset_files:
-        dest_file_path = os.path.join(folder_path, f"{file_link['title']}.pdf")
-        if not check_src_data(dest_file_path):
-            print(f"Downloading {file_link['title']}...")
-            wget.download(file_link["url"], out=dest_file_path)
-        else:
-            print(f"File {file_link['title']}.pdf already exists, skipping download.")
-
+    try:
+        for file_link in dataset_files:
+            dest_file_path = os.path.join(folder_path, f"{file_link['title']}.pdf")
+            if not check_src_data(dest_file_path):
+                print(f"Downloading {file_link['title']}...")
+                wget.download(file_link["url"], out=dest_file_path)
+            else:
+                print(
+                    f"File {file_link['title']}.pdf already exists, skipping download."
+                )
+    except Exception as e:
+        print(f"\n⚠️  WARNING: Unexpected error downloading '{file_link['title']}'")
     return {"status": "completed", "folder_path": folder_path, "dataset": DATASET_NAME}
 
 

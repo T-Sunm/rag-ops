@@ -1,19 +1,33 @@
 import os
+import torch
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 from langchain_chroma import Chroma
 from uuid import uuid4
 from plugins.jobs.utils import Minio_Loader
-from plugins.config.minio_config import MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
+from plugins.config.minio_config import (
+    MINIO_ENDPOINT,
+    MINIO_ACCESS_KEY,
+    MINIO_SECRET_KEY,
+)
+
+
 class EmbedAndStore:
     def __init__(self):
         # Initialize the embedding model
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-mpnet-base-v2"
-        )
-        self.minio_loader = Minio_Loader(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
 
-    def document_embedding_vectorstore(self, splits: list[Document], collection_name: str, persist_directory: str):
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"--- Using device: {device.upper()} ---")
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        )
+        self.minio_loader = Minio_Loader(
+            MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
+        )
+
+    def document_embedding_vectorstore(
+        self, splits: list[Document], collection_name: str, persist_directory: str
+    ):
         """
         Generate embeddings for document splits and store them in a Chroma vector store.
 
@@ -43,17 +57,15 @@ class EmbedAndStore:
         return vectordb
 
 
-
-
 # --------------------------- TEST -------------------------------
-# if __name__ == '__main__':
+# if __name__ == "__main__":
 #     # ---- Self-test ----
 
 #     # 1. Create dummy document splits
 #     dummy_texts = [
 #         "Hello world, this is a test chunk.",
 #         "Another chunk for embedding.",
-#         "Final chunk to verify."
+#         "Final chunk to verify.",
 #     ]
 #     splits = [Document(page_content=t) for t in dummy_texts]
 
@@ -64,9 +76,7 @@ class EmbedAndStore:
 #     # 3. Run embedding + store
 #     es = EmbedAndStore()
 #     vectordb = es.document_embedding_vectorstore(
-#         splits=splits,
-#         collection_name=collection_name,
-#         persist_directory=temp_dir
+#         splits=splits, collection_name=collection_name, persist_directory=temp_dir
 #     )
 
 #     # 4. Verify persistence directory is not empty
@@ -84,7 +94,9 @@ class EmbedAndStore:
 #     assert count == len(splits), f"Expected {len(splits)} embeddings, got {count}"
 
 #     print(f"Self-test passed: {count} embeddings stored and reloaded successfully.")
-#     print(f"Temporary store is at: {temp_dir}\nPlease delete it manually when you're done.")
+#     print(
+#         f"Temporary store is at: {temp_dir}\nPlease delete it manually when you're done."
+#     )
 
 #     query = "LangChain provides abstractions to make working with LLMs easy"
 #     print(f"\nQuerying for top-2 results similar to:\n  {query!r}\n")

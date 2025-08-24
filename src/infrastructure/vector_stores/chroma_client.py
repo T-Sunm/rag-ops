@@ -11,7 +11,7 @@ def _format_docs(docs: List[Document], scores: List[float] | None = None) -> str
     for idx, doc in enumerate(docs):
         content = doc.page_content.strip()
         if scores:
-            content += f"  [score={scores[idx]:.4f}]"
+            content += f" [score={scores[idx]:.4f}]"
         formatted.append(content)
     return "\n\n".join(formatted)
 

@@ -3,8 +3,9 @@ from typing import List
 from langchain.embeddings.base import Embeddings
 import numpy as np
 
+
 class EmbeddingService(Embeddings):
-    def __init__(self, model_name: str = 'sentence-transformers/all-mpnet-base-v2'):
+    def __init__(self, model_name: str = "sentence-transformers/all-mpnet-base-v2"):
         self.embedding_model = SentenceTransformer(model_name)
 
     def embed_query(self, text: str) -> List[float]:
@@ -17,5 +18,6 @@ class EmbeddingService(Embeddings):
         """Embed a list of texts (normalized vectors) and return as list of lists."""
         vectors = self.embedding_model.encode(texts, normalize_embeddings=True)
         return np.array(vectors).tolist()
+
 
 embedding_service = EmbeddingService()
