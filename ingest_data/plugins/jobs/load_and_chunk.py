@@ -6,16 +6,21 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from plugins.jobs.utils import Minio_Loader
 
-from plugins.config.minio_config import MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
+from plugins.config.minio_config import (
+    MINIO_ENDPOINT,
+    MINIO_ACCESS_KEY,
+    MINIO_SECRET_KEY,
+)
+
 minio_loader = Minio_Loader(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
 
 
 def remove_non_utf8_characters(text: str) -> str:
-    return ''.join(char for char in text if ord(char) < 128)
+    return "".join(char for char in text if ord(char) < 128)
 
 
 def load_pdf(pdf_file: str):
-    docs = PyPDFLoader(pdf_file, extract_images=True).load()
+    docs = PyPDFLoader(pdf_file, extract_images=False).load()
     for doc in docs:
         doc.page_content = remove_non_utf8_characters(doc.page_content)
     return docs
@@ -41,7 +46,9 @@ class PDFLoader(BaseLoader):
 
         doc_loaded = []
         total_files = len(pdf_files)
-        for pdf_file in tqdm(pdf_files, total=total_files, desc="Loading PDFs", unit="file"):
+        for pdf_file in tqdm(
+            pdf_files, total=total_files, desc="Loading PDFs", unit="file"
+        ):
             result = load_pdf(pdf_file)
             doc_loaded.extend(result)
         return doc_loaded
@@ -50,9 +57,9 @@ class PDFLoader(BaseLoader):
 class TextSplitter:
     def __init__(
         self,
-        separators: List[str] = ['\n\n', '\n', ' ', ''],
+        separators: List[str] = ["\n\n", "\n", " ", ""],
         chunk_size: int = 300,
-        chunk_overlap: int = 13
+        chunk_overlap: int = 13,
     ) -> None:
         self.splitter = RecursiveCharacterTextSplitter(
             separators=separators,
@@ -69,7 +76,7 @@ class LoadAndChunk:
     def __init__(
         self,
         file_type: Literal["pdf"] = "pdf",
-        split_kwargs: dict = {"chunk_size": 300, "chunk_overlap": 13}
+        split_kwargs: dict = {"chunk_size": 300, "chunk_overlap": 13},
     ) -> None:
         assert file_type == "pdf", "file_type must be pdf"
         self.file_type = file_type
@@ -81,7 +88,6 @@ class LoadAndChunk:
             pdf_files = [pdf_files]
         docs = self.doc_loader(pdf_files)
         return self.doc_splitter(docs)
-    
 
     def ingest_to_minio(self, data, s3_path: str):
         minio_loader.upload_to_minio(data, s3_path)
@@ -89,7 +95,7 @@ class LoadAndChunk:
     def load_from_minio(self, s3_path: str):
         data = minio_loader.download_from_minio(s3_path)
         return data
-    
+
     def load_dir(self, dir_path: str):
         files = glob.glob(f"{dir_path}/*.pdf")
         assert files, f"No PDF files found in {dir_path}"
