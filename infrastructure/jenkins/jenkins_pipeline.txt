@@ -1,0 +1,23 @@
+pipeline {
+
+    agent any
+
+    stages {
+        stage('Checkout code') {
+            steps {
+                // This will checkout the code from the repo configured in Jenkins job
+                checkout scm
+            }
+        }
+        stage('Trigger Airflow DAG') {
+            steps {
+                script {
+                    // We need to be in the directory with docker-compose.yaml
+                    dir('ingest_data') {
+                        sh "docker-compose exec -T airflow-worker airflow dags trigger ingest_data"
+                    }
+                }
+            }
+        }
+    }
+}

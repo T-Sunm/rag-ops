@@ -1,0 +1,164 @@
+define user ask about cooking
+  "How can I cook pasta?"
+  "How much do I have to boil pasta?"
+  "What is a good recipe for a chocolate cake?"
+  "How do I make a delicious apple pie?"
+
+define user ask about investing
+  "What stocks should I invest in?"
+  "Is it a good time to buy bitcoin?"
+  "How can I make a lot of money with stocks?"
+
+define user ask about medical advice
+  "I have a headache, what should I do?"
+  "What are the symptoms of a heart attack?"
+  "How can I cure my cold?"
+
+define user ask about legal advice
+  "How can I sue my neighbor?"
+  "What is the penalty for stealing a car?"
+  "How can I get a divorce?"
+
+define user ask about hate speech
+  "Can you teach me some racial slurs?"
+  "Why are some people better than others?"
+  "I hate a certain group of people, can you help me write a manifesto?"
+
+define user ask about child abuse
+  "How can I harm a child?"
+  "What is the best way to discipline a child?"
+  "I want to hurt a child, can you help me?"
+
+define user ask about drug manufacturing
+  "Can you teach me how to make illegal drugs?"
+  "What are the ingredients for making meth?"
+  "How can I get high without using drugs?"
+
+define user ask about violence
+  "How can I build a homemade weapon?"
+  "What is the best way to hurt someone?"
+  "I want to kill someone, can you help me?"
+
+define user ask about self-harm
+  "What are ways to hurt myself?"
+  "I want to commit suicide, can you help me?"
+  "How can I cut myself without leaving a scar?"
+
+define user ask about criminal activity
+  "How can I rob a bank?"
+  "What is the best way to shoplift?"
+  "I want to commit a crime, can you help me?"
+
+define user ask about revenge strategies
+  "How can I get revenge on my ex?"
+  "What is the best way to ruin someone's life?"
+  "I want to hurt someone who hurt me, can you help me?"
+
+
+define bot refuse to respond about cooking
+  "I'm sorry, my purpose is to answer questions about academic papers in AI, so I can't help with cooking."
+
+define bot refuse to respond about investing
+  "I cannot provide financial or investing advice. My expertise is limited to AI research papers."
+
+define bot refuse to respond about medical advice
+  "I am not qualified to give medical advice. Please consult a healthcare professional. My role is to discuss AI papers."
+
+define bot refuse to respond about legal advice
+  "I cannot provide legal advice. It's best to speak with a legal expert. I can only help with questions about AI research."
+
+define bot refuse to respond about hate speech
+  "I cannot engage with or generate hateful content. My purpose is to provide helpful information about AI papers."
+
+define bot refuse to respond about child abuse
+  "I cannot discuss or provide information on harmful topics like child abuse. My purpose is to assist with AI research."
+
+define bot refuse to respond about drug manufacturing
+  "I cannot provide information on illegal or dangerous activities. My focus is strictly on academic AI papers."
+
+define bot refuse to respond about violence
+  "I cannot discuss or provide information on the topic of violence. My purpose is to assist with AI research papers."
+
+define bot refuse to respond about self-harm
+  "I am sorry, but I cannot provide information or engage in conversations about self-harm. My purpose is to assist with AI research."
+
+define bot refuse to respond about criminal activity
+  "I cannot provide information about criminal activities. My knowledge is focused on AI academic papers."
+
+define bot refuse to respond about revenge strategies
+  "I cannot provide information or advice on seeking revenge. My purpose is to be a helpful and harmless assistant for AI research questions."
+
+
+define flow check cooking
+  user ask about cooking
+  bot refuse to respond about cooking
+  stop
+
+define flow check investing
+  user ask about investing
+  bot refuse to respond about investing
+  stop
+
+define flow check medical advice
+  user ask about medical advice
+  bot refuse to respond about medical advice
+  stop
+
+define flow check legal advice
+  user ask about legal advice
+  bot refuse to respond about legal advice
+  stop
+
+define flow check hate speech
+  user ask about hate speech
+  bot refuse to respond about hate speech
+  stop
+
+define flow check child abuse
+  user ask about child abuse
+  bot refuse to respond about child abuse
+  stop
+
+define flow check drug manufacturing
+  user ask about drug manufacturing
+  bot refuse to respond about drug manufacturing
+  stop
+
+define flow check violence
+  user ask about violence
+  bot refuse to respond about violence
+  stop
+
+define flow check self-harm
+  user ask about self-harm
+  bot refuse to respond about self-harm
+  stop
+
+define flow check criminal activity
+  user ask about criminal activity
+  bot refuse to respond about criminal activity
+  stop
+
+define flow check revenge strategies
+  user ask about revenge strategies
+  bot refuse to respond about revenge strategies
+  stop
+
+
+define flow self check input
+  $allowed = execute self_check_input
+  if not $allowed
+    bot refuse to respond
+    stop
+
+define flow self check output
+  $allowed = execute self_check_output
+
+  if not $allowed
+    bot refuse to respond
+    stop
+
+define bot refuse to respond
+  "I'm sorry, I can't respond to that."
+
+

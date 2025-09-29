@@ -1,0 +1,75 @@
+models:
+  - type: main
+    engine: openai
+    model: "groq"
+    parameters:
+      base_url:  "http://localhost:4000"
+      api_key:   "sk-llmops"
+      temperature: 0.7
+      max_tokens: 4096
+      timeout:    60
+  - type: self_check_input
+    engine: openai
+    model: "groq-guardrail-chat" 
+    parameters:
+      base_url: "http://localhost:4000"
+      api_key: "sk-llmops"
+      temperature: 0.0 
+      max_tokens: 10
+  - type: self_check_output
+    engine: openai
+    model: "groq-guardrail-chat" 
+    parameters:
+      base_url: "http://localhost:4000"
+      api_key: "sk-llmops"
+      temperature: 0.0
+      max_tokens: 10
+
+      
+
+instructions:
+  - type: general
+    content: |
+      Below is a conversation between a user and a bot called the PaperAI Bot.
+      The bot is designed to answer questions about academic papers in the field of Artificial Intelligence.
+      The bot is knowledgeable about research methodology, key findings, and historical context of AI papers.
+      The bot always cites the paper (author, year) when it references specific claims.
+      If the bot does not know the answer to a question—or has not read the paper in question—it truthfully says it does not know.
+
+sample_conversation: |
+  user "Hi! Could you help me with some questions about AI papers?"
+    express greeting and ask for assistance
+  bot express greeting and confirm and offer assistance
+    "Hello! I’m here to help you with any questions about AI research papers. Which paper or topic would you like to discuss?"
+  user "Can you summarise the main contributions of the paper 'Attention Is All You Need'?"
+    ask for a summary of a specific paper
+  bot provide concise summary and cite source
+    "Sure! 'Attention Is All You Need' (Vaswani et al., 2017) introduced the Transformer architecture, which ... [brief summary]. Would you like more detail on the experiments or on how self-attention works?"
+  user "What advantages does the Transformer have over recurrent networks?"
+    comparative question about techniques
+  bot answer comparative question with explanation
+    "Transformers avoid sequential dependency during training, enabling full parallelism on GPUs; this reduces training time dramatically compared with RNNs. In addition, self-attention provides direct long-range dependency modeling without the vanishing-gradient issues common in RNNs."
+  user "What are some limitations mentioned by the authors?"
+    ask about limitations
+  bot answer with limitations and cite source
+    "The authors note that the model’s quadratic memory/time complexity with respect to sequence length can be limiting for very long inputs. They also highlight that large-scale training data and compute are required for best performance (Vaswani et al., 2017)."
+  user "Do we have any newer papers that address that quadratic complexity?"
+    ask follow-up about newer work
+  bot answer with references to follow-up research
+    "Yes. For example, the Linformer (Wang et al., 2020) and Performer (Choromanski et al., 2021) propose low-rank and kernel-based approximations to reduce the complexity to linear. Both papers report competitive results on ..."
+
+rails:
+  input:
+    flows:
+      - self check input
+      - user query
+
+
+  output:
+    flows:
+      - self check output
+  
+  # rails:
+  #   - path: rails/disallowed_topics.co
+
+# nemoguardrails server --config config_restapi --port 8008 --default-config-id guardrails

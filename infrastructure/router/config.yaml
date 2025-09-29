@@ -1,0 +1,108 @@
+model_list:
+# LM Studio
+  - model_name: lm-studio
+    litellm_params:
+      model: lm_studio/qwen2.5-1.5b-instruct
+      api_base: http://host.docker.internal:1234/v1
+      api_key: lm-studio  
+      tpm: 5000
+      rpm: 10
+      weight: 5
+      max_parallel_requests : 10
+      timeout: 300         # timeout cho call thường (tối đa 5 phút)
+      stream_timeout: 30
+
+  - model_name: lm-studio
+    litellm_params:
+      model: lm_studio/qwen2.5-0.5b-instruct
+      api_base: http://host.docker.internal:1234/v1
+      api_key: lm-studio
+      tpm: 5000
+      rpm: 10
+      weight: 1
+      max_parallel_requests : 10
+      timeout: 300         
+      stream_timeout: 30
+  - model_name: lm-studio-guardrail
+    litellm_params:
+      model: lm_studio/granite-guardian-3.0-2b
+      api_base: http://host.docker.internal:1234/v1
+      api_key: lm-studio
+      tpm: 5000
+      rpm: 10
+      weight: 1
+      max_parallel_requests : 10
+      timeout: 300         
+
+# Groq
+  - model_name: groq
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 50000
+      rpm: 100
+      weight: 2
+      max_parallel_requests : 10
+      timeout: 300         
+      stream_timeout: 30
+
+  - model_name: groq
+    litellm_params:
+      model: groq/openai/gpt-oss-20b
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 50000
+      rpm: 100
+      weight: 8
+      max_parallel_requests : 10
+      timeout: 300        
+      stream_timeout: 30
+  
+  - model_name: groq-guardrail-classification
+    litellm_params:
+      model: groq/meta-llama/llama-prompt-guard-2-86m
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 50000
+      rpm: 100
+      max_parallel_requests : 10
+      timeout: 300     
+
+  - model_name: groq-guardrail-chat
+    litellm_params:
+      model: groq/meta-llama/llama-guard-4-12b
+      api_base: https://api.groq.com/openai/v1
+      api_key: os.environ/GROQ_API_KEY
+      tpm: 50000
+      rpm: 100
+      max_parallel_requests : 10
+      timeout: 300 
+
+
+router_settings:
+  routing_strategy: simple-shuffle
+  allowed_fails: 3 # cooldown model if it fails > 1 call in a minute. 
+  cooldown_time: 30 # (in seconds) how long to cooldown model if fails/min > allowed_fails
+  retry_policy:
+  # for error request to llm
+    APIConnectionErrorRetries: 3
+    RateLimitErrorRetries: 3
+    APITimeoutErrorRetries: 3
+    ServiceUnavailableErrorRetries: 3
+
+    BadRequestErrorRetries: 3
+    ContentPolicyViolationErrorRetries: 4
+  allowed_fails_policy:
+    ContentPolicyViolationErrorAllowedFails: 1000 # Allow 1000 ContentPolicyViolationError before cooling down a deployment
+    RateLimitErrorAllowedFails: 100 # Allow 100 RateLimitErrors before cooling down a deployment
+  
+  redis_host: host.docker.internal
+  redis_port: 6378
+  redis_password: ""
+
+general_settings: 
+  master_key: sk-llmops # [OPTIONAL] Only use this if you to require all calls to contain this key (Authorization: Bearer sk-1234)
+
+litellm_settings:
+  drop_params: true  # for using embedding model with litellm
