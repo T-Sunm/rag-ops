@@ -2,7 +2,7 @@ import os
 from langchain.schema import Document
 from langchain_chroma import Chroma
 from uuid import uuid4
-from plugins.jobs.utils import Minio_Loader, get_embeddings
+from plugins.jobs.utils import MinioLoader, get_embeddings
 from plugins.config.minio_config import (
     MINIO_ENDPOINT,
     MINIO_ACCESS_KEY,
@@ -11,13 +11,13 @@ from plugins.config.minio_config import (
 from langchain_community.vectorstores.utils import filter_complex_metadata
 
 
-class EmbedAndStore:
+class DocumentEmbedder:
     def __init__(self):
         print(
             "-> Đang khởi tạo embeddings cho model: sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
         )
         self.embeddings = get_embeddings()
-        self.minio_loader = Minio_Loader(
+        self.minio_loader = MinioLoader(
             MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
         )
 
@@ -74,7 +74,7 @@ class EmbedAndStore:
 #     collection_name = "test_embed_store"
 
 #     # 3. Run embedding + store
-#     es = EmbedAndStore()
+#     es = DocumentEmbedder()
 #     vectordb = es.document_embedding_vectorstore(
 #         splits=splits, collection_name=collection_name, persist_directory=temp_dir
 #     )

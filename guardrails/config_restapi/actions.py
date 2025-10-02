@@ -13,7 +13,7 @@ generator_service = rag_service.rest_generator_service
 
 
 async def get_query_response(user_question, session_id, user_id):
-    history = rag_service._get_session_history(session_id)
+    history = rag_service.get_session_history(session_id)
     print("length of history is ", len(history))
     return await generator_service.generate_rest_api(
         user_question,

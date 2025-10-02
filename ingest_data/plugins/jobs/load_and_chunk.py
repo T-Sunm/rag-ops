@@ -1,9 +1,9 @@
+import pickle
 from typing import Union, List, Optional
-import os
 import glob
-from pathlib import Path
 from tqdm import tqdm
 import multiprocessing
+from io import BytesIO
 
 # Docling imports
 from langchain_docling.loader import DoclingLoader, ExportType
@@ -18,14 +18,14 @@ from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from plugins.jobs.utils import get_tokenizer
 
-from plugins.jobs.utils import Minio_Loader
+from plugins.jobs.utils import MinioLoader
 from plugins.config.minio_config import (
     MINIO_ENDPOINT,
     MINIO_ACCESS_KEY,
     MINIO_SECRET_KEY,
 )
 
-minio_loader = Minio_Loader(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
+minio_loader = MinioLoader(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
 
 
 def get_num_cpu() -> int:
@@ -191,12 +191,32 @@ class LoadAndChunk:
         return all_docs
 
     def ingest_to_minio(self, data, s3_path: str):
-        """Upload dữ liệu lên MinIO"""
-        minio_loader.upload_to_minio(data, s3_path)
+        """
+        Serialize dữ liệu bằng pickle và upload lên MinIO.
+        Hàm này giờ sẽ chịu trách nhiệm cho việc chuẩn bị dữ liệu.
+        """
+        print(f"-> Bắt đầu serialize và ingest dữ liệu tới: {s3_path}")
+
+        buffer = BytesIO()
+        pickle.dump(data, buffer)
+        data_length = buffer.tell()
+        buffer.seek(0)  # Đưa con trỏ về đầu để MinioLoader có thể đọc
+
+        minio_loader.upload_object_from_stream(
+            s3_path=s3_path, data_stream=buffer, data_length=data_length
+        )
+        print("-> Ingest thành công!")
 
     def load_from_minio(self, s3_path: str):
-        """Download dữ liệu từ MinIO"""
-        data = minio_loader.download_from_minio(s3_path)
+        """
+        Download dữ liệu từ MinIO và deserialize bằng pickle.
+        """
+        print(f"-> Bắt đầu download và deserialize dữ liệu từ: {s3_path}")
+
+        buffer = minio_loader.download_object_as_stream(s3_path)
+
+        data = pickle.load(buffer)
+        print("-> Download và deserialize thành công!")
         return data
 
     def load_dir(self, dir_path: str):

@@ -5,7 +5,7 @@ name: rag-ops-infrastructure
 services:
   # === CACHE LAYER ===
   semantic-redis:
-    image: redis/redis-stack:latest
+    image: redis/redis-stack:7.4.0-v6
     container_name: semantic-redis
     ports:
       - "6378:6379"
@@ -22,7 +22,7 @@ services:
 
   # === ROUTER LAYER ===
   litellm-db:
-    image: postgres:16
+    image: postgres:16-alpine3.22
     container_name: litellm-db
     environment:
       POSTGRES_DB: litellm
@@ -43,7 +43,7 @@ services:
       - rag-ops-network
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:v1.77.3-stable
     container_name: litellm-router
     volumes:
       - ./router/config.yaml:/app/config.yaml

@@ -5,7 +5,7 @@ services:
       context: .
       args:
         target: runtime
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:v1.77.3-stable
     #########################################
     # Uncomment these lines to start proxy with a config.yaml file ##
     volumes:
@@ -31,7 +31,7 @@ services:
       start_period: 40s # Wait 40 seconds after container start before beginning health checks
 
   db:
-    image: postgres:16
+    image: postgres:16-alpine3.22
     restart: always
     container_name: litellm_db
     environment:

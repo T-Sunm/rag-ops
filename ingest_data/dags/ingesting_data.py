@@ -16,7 +16,7 @@ sys.path.append(str(AIRFLOW_HOME))
 from plugins.jobs.download import DATASETS, get_dataset_names
 from plugins.jobs.utils import check_src_data
 from plugins.jobs.load_and_chunk import LoadAndChunk
-from plugins.jobs.embed_and_store import EmbedAndStore
+from plugins.jobs.embed_and_store import DocumentEmbedder
 from airflow.operators.empty import EmptyOperator
 
 
@@ -112,7 +112,7 @@ def load_and_chunk_data():
 
 @task(trigger_rule=TriggerRule.ONE_SUCCESS)
 def embed_and_store_data():
-    embedder = EmbedAndStore()
+    embedder = DocumentEmbedder()
     splits = embedder.minio_loader.download_from_minio(MINIO_PATH)
     vectordb = embedder.document_embedding_vectorstore(
         splits, collection_name, directory_chromadb

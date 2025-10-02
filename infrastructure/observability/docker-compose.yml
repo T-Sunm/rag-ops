@@ -84,7 +84,7 @@ services:
       LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-}
 
   clickhouse:
-    image: clickhouse/clickhouse-server
+    image: clickhouse/clickhouse-server:25.9.2.1-alpine
     restart: always
     user: "101:101"
     environment:
@@ -105,7 +105,7 @@ services:
       start_period: 1s
 
   minio:
-    image: minio/minio
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     restart: always
     entrypoint: sh
     # create the 'langfuse' bucket before starting the service
@@ -140,7 +140,7 @@ services:
       retries: 10
 
   postgres:
-    image: postgres:${POSTGRES_VERSION:-latest}
+    image: postgres:${POSTGRES_VERSION:-16-alpine3.22}
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]

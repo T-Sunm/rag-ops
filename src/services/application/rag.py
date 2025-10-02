@@ -63,7 +63,7 @@ class Rag:
             langfuse_handler=self.langfuse_handler,
         )
 
-    def _get_session_history(self, session_id: str | None = None) -> list[dict]:
+    def get_session_history(self, session_id: str | None = None) -> list[dict]:
         """Lấy chat history từ Langfuse thay vì in-memory storage"""
         if not session_id:
             return []
@@ -161,7 +161,7 @@ class Rag:
         user_id: str | None = None,
         guardrails: LLMRails | None = None,
     ):
-        chat_history = self._get_session_history(session_id)
+        chat_history = self.get_session_history(session_id)
 
         # ———— Nếu có Guardrails thì dùng nó ————
         if guardrails:
@@ -182,7 +182,7 @@ class Rag:
             # Không cần lưu history nếu Guardrails block ; Nếu guardrails ok thì lưu
             # self._save_to_session_history(session_id, question, str(result)) # Removed as per new_code
             # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
-            # current_history = self._get_session_history(session_id) # Removed as per new_code
+            # current_history = self.get_session_history(session_id) # Removed as per new_code
             # if len(current_history) >= 4: # Removed as per new_code
             #     summarized_history = ( # Removed as per new_code
             #         await self.summarize_service._summarize_and_truncate_history( # Removed as per new_code
@@ -204,7 +204,7 @@ class Rag:
         # lưu lại history sau khi RAG trả về
         # self._save_to_session_history(session_id, question, rag_output) # Removed as per new_code
         # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
-        # current_history = self._get_session_history(session_id) # Removed as per new_code
+        # current_history = self.get_session_history(session_id) # Removed as per new_code
         # if len(current_history) >= 4: # Removed as per new_code
         #     summarized_history = ( # Removed as per new_code
         #         await self.summarize_service._summarize_and_truncate_history( # Removed as per new_code
@@ -228,7 +228,7 @@ class Rag:
             input={"question": question, "session_id": session_id, "user_id": user_id},
         ) as span:
             self.langfuse.update_current_trace(session_id=session_id, user_id=user_id)
-            chat_history = self._get_session_history(session_id)
+            chat_history = self.get_session_history(session_id)
 
             # ———— CHECK INPUT RAILS TRƯỚC KHI GỌI LLM ————
             if guardrails:
@@ -331,7 +331,7 @@ class Rag:
                     # self._save_to_session_history(session_id, question, full_response) # Removed as per new_code
                     span.update(output=full_response)
                     # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
-                    # current_history = self._get_session_history(session_id) # Removed as per new_code
+                    # current_history = self.get_session_history(session_id) # Removed as per new_code
                     # if len(current_history) >= 4: # Removed as per new_code
                     #     summarized_history = await self.summarize_service._summarize_and_truncate_history( # Removed as per new_code
                     #         chat_history=current_history, keep_last=2 # Removed as per new_code
@@ -353,7 +353,7 @@ class Rag:
             # self._save_to_session_history(session_id, question, full_response) # Removed as per new_code
             span.update(output=full_response)
             # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
-            # current_history = self._get_session_history(session_id) # Removed as per new_code
+            # current_history = self.get_session_history(session_id) # Removed as per new_code
             # if len(current_history) >= 4: # Removed as per new_code
             #     summarized_history = ( # Removed as per new_code
             #         await self.summarize_service._summarize_and_truncate_history( # Removed as per new_code
