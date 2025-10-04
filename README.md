@@ -176,9 +176,16 @@ This layer brings end-to-end visibility into the RAG system, leveraging Langfuse
 
 The system integrates Langfuse across multiple components:
 
--   **RAG Service (`rag.py`)**: Uses Langfuse's `@observe` decorator to trace the execution of the RAG pipeline, tool calls, and LLM interactions.
--   **Generator Services (`generator.py`)**: Utilize Langfuse's `CallbackHandler` to monitor the generation process and LLM interactions.
--   **Observability Stack**: Includes Langfuse for prompt tracing, evaluations, and cost tracking.
+-   **RAG Service (`rag.py`)**: Employs multiple Langfuse features for comprehensive tracing. In addition to decorators, it uses `with langfuse.start_as_current_span(...)` to create custom spans for granular monitoring of specific logic, such as guardrail checks.
+-   **Generator Services (`generator.py`)**: Utilize Langfuse's `CallbackHandler` to automatically trace the generation process and LLM interactions.
+-   **Observability Stack**: The entire observability backend, including the Langfuse server and UI, is containerized for easy local deployment.
+
+#### Langfuse Configuration: Local vs. CI/CD
+
+The project's observability setup adapts to different environments:
+
+-   **Local Development**: For local development, the system connects to a self-hosted Langfuse instance running in Docker. All traces and data remain within your local environment.
+-   **CI/CD & Deployment**: In a CI/CD environment (e.g., GitHub Actions), where self-hosting is not feasible, the application **must be configured to use a cloud-hosted Langfuse instance**. This requires updating the environment variables (`LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_HOST`) in your CI/CD secrets to point to your cloud project.
 
 #### Key Features
 
