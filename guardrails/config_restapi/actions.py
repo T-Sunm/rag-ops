@@ -15,6 +15,8 @@ generator_service = rag_service.rest_generator_service
 async def get_query_response(user_question, session_id, user_id):
     history = rag_service.get_session_history(session_id)
     print("length of history is ", len(history))
+    print("user_id is ", user_id)
+    print("session_id is ", session_id)
     return await generator_service.generate_rest_api(
         user_question,
         history.copy(),  # Xài copy để tránh không edit vào chat_history gốc, để mỗi req đến ta chỉ lưu response cuối cùng

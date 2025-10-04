@@ -3,6 +3,7 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from datetime import timedelta
 import os
+from sqlalchemy.util import pickle
 import wget
 import sys
 from pathlib import Path
@@ -113,7 +114,8 @@ def load_and_chunk_data():
 @task(trigger_rule=TriggerRule.ONE_SUCCESS)
 def embed_and_store_data():
     embedder = DocumentEmbedder()
-    splits = embedder.minio_loader.download_from_minio(MINIO_PATH)
+    buffer = embedder.minio_loader.download_object_as_stream(MINIO_PATH)
+    splits = pickle.load(buffer)
     vectordb = embedder.document_embedding_vectorstore(
         splits, collection_name, directory_chromadb
     )  # Dynamic collection name

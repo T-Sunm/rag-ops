@@ -7,14 +7,6 @@ DATASETS = {
                 "url": "https://sotnmt.soctrang.gov.vn/SiteFolders/stn/4.Nam2024/460-TB-BTNMT.pdf",
             },
             {
-                "title": "Research on the responsibility of recycling batteries and rechargeable batteries-VN",
-                "url": "https://epr.vn/upload/bao-cao-nghien-cuu/1681609661643b53bd1a8109.68128269.pdf",
-            },
-            {
-                "title": "EPA Workshop Report on Lithium-ion Battery Handling and Recycling-USA",
-                "url": "https://www.epa.gov/system/files/documents/2022-03/final_lithium-ion-battery-workshop-public-report_508web.pdf",
-            },
-            {
                 "title": "US Congressional Document on Legislation and Funding to Improve Recycling Access-USA",
                 "url": "https://www.congress.gov/117/meeting/house/114965/documents/HHRG-117-IF18-20220630-SD002.pdf",
             },

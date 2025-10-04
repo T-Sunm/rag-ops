@@ -112,16 +112,13 @@ After all infrastructure is running and the data has been ingested, start the Fa
 
 ```bash
 # Use the default dataset (environment_battery)
-python run.py --provider groq
+python -m src.main --provider groq
 
 # Or specify a different dataset that you've ingested
-python run.py --provider groq --dataset llm_papers
-
-# Or specify custom host and port
-python run.py --provider groq --dataset environment_battery --host 0.0.0.0 --port 8000
+python -m src.main --provider groq --dataset llm_papers
 ```
 
-The API server will be available at **http://localhost:8000**.
+The server will be accessible at `http://localhost:8000` by default. You can access the API documentation at `http://localhost:8000/docs`.
 
 ### API Layer
 
@@ -167,10 +164,10 @@ You can select the provider when starting the API server:
 
 ```bash
 # Example using Groq
-python run.py --provider groq
+python -m src.main --provider groq
 
 # Example using a local model served with LM Studio
-python run.py --provider lm-studio
+python -m src.main --provider lm-studio
 ```
 ### Observability Layer
 This layer brings end-to-end visibility into the RAG system, leveraging Langfuse to trace prompts, monitor LLM interactions, track token usage, and evaluate system performance. By integrating observability directly into core services, the system enables systematic debugging, performance tuning, and cost optimization — making it easier to operate and maintain RAG applications in production.

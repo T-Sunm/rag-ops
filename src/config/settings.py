@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )  # Default to groq if not set
 
     # LLM Parameters
-    LLMs_TEMPERATURE: float = 0.7
+    LLM_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 2048
     LLM_STREAMING: bool = False
 
@@ -47,11 +47,15 @@ class Settings(BaseSettings):
     LANGFUSE_PUBLIC_KEY: Optional[str] = os.getenv("LANGFUSE_PUBLIC_KEY")
     LANGFUSE_HOST: Optional[str] = os.getenv("LANGFUSE_HOST")
 
+    # Guardrails Configuration
+    GUARDRAILS_RESTAPI_PATH: str = "guardrails/config_restapi"
+    GUARDRAILS_SSE_PATH: str = "guardrails/config_sse"
+
     @property
     def llm_config(self) -> Dict[str, Any]:
         """Get LLM configuration based on provider."""
         return {
-            "temperature": self.LLMs_TEMPERATURE,
+            "temperature": self.LLM_TEMPERATURE,
             "streaming": self.LLM_STREAMING,
             "max_tokens": self.LLM_MAX_TOKENS,
             "base_url": self.LITELLM_BASE_URL,

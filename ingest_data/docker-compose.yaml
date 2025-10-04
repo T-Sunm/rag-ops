@@ -96,6 +96,8 @@ x-airflow-common:
       condition: service_healthy
     postgres:
       condition: service_healthy
+    minio:
+      condition: service_healthy
 
 services:
   postgres:
@@ -166,6 +168,7 @@ services:
   airflow-worker:
     <<: *airflow-common
     command: celery worker
+    mem_limit: 8g # Hoặc một giá trị phù hợp hơn với hệ thống của bạn
     healthcheck:
       # yamllint disable rule:line-length
       test:

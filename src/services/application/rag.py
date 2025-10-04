@@ -14,6 +14,9 @@ import uuid
 from nemoguardrails import LLMRails
 import json
 from src.utils.text_processing import is_guardrails_error
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class Rag:
@@ -64,65 +67,34 @@ class Rag:
         )
 
     def get_session_history(self, session_id: str | None = None) -> list[dict]:
-        """Lấy chat history từ Langfuse thay vì in-memory storage"""
+        """Lấy chat history từ Langfuse dựa trên cấu trúc trace thực tế."""
         if not session_id:
             return []
 
         try:
-
             # Lấy traces từ Langfuse
             traces_in_session = self.langfuse.api.trace.list(
                 session_id=session_id, limit=100
             )
 
-            # Sort by timestamp
+            # Sắp xếp theo thời gian
             sorted_traces = sorted(traces_in_session.data, key=lambda x: x.timestamp)
-
-            # Danh sách để lưu lịch sử chat
             chat_history = []
 
-            # Lặp qua từng trace để trích xuất
             for trace in sorted_traces:
-                # 1. Lấy câu trả lời của AI
                 ai_answer = ""
-                if isinstance(trace.output, dict):
+                user_question = ""
+
+                if isinstance(trace.output, str):
+                    ai_answer = trace.output
+                elif isinstance(trace.output, dict):
                     ai_answer = trace.output.get("content", "") or trace.output.get(
                         "response", ""
                     )
-                elif isinstance(trace.output, str):
-                    ai_answer = trace.output
 
-                # 2. Lấy câu hỏi của người dùng
-                user_question = ""
-                if (
-                    isinstance(trace.input, list)
-                    and len(trace.input) > 0
-                    and isinstance(trace.input[0], dict)
-                ):
-                    prompt_content = trace.input[0].get("content", "")
+                if isinstance(trace.input, dict):
+                    user_question = trace.input.get("question", "")
 
-                    # Parse format "QUESTION:" (traces mới)
-                    if "**QUESTION:**" in prompt_content:
-                        try:
-                            after_question_marker = prompt_content.split(
-                                "**QUESTION:**"
-                            )[1]
-                            user_question = after_question_marker.split(
-                                "---------------------------------"
-                            )[0].strip()
-                        except IndexError:
-                            user_question = ""
-
-                    # Parse format "New User Question:" (traces cũ)
-                    elif "**New User Question:**" in prompt_content:
-                        try:
-                            user_question = prompt_content.split(
-                                "**New User Question:**"
-                            )[-1].strip()
-                        except IndexError:
-                            user_question = ""
-
-                # Thêm cặp hỏi-đáp vào lịch sử nếu có đủ thông tin
                 if user_question and ai_answer:
                     chat_history.extend(
                         [
@@ -131,29 +103,14 @@ class Rag:
                         ]
                     )
 
-            # Chỉ giữ 12 phần tử gần nhất (6 cặp hỏi-đáp)
-            return chat_history[-6:] if len(chat_history) > 12 else chat_history
+            max_pairs = 6
+            return chat_history[-(max_pairs * 2) :]
 
         except Exception as e:
             print(f"Error fetching chat history from Langfuse: {e}")
             return []
 
-    # Không cần method này nữa vì không lưu vào in-memory storage
-    # def _save_to_session_history(self, session_id: str, question: str, response: str):
-    #     """Lưu vào in-memory storage"""
-    #     if session_id not in self.session_histories:
-    #         self.session_histories[session_id] = []
-
-    #     # Add user message và assistant response
-    #     self.session_histories[session_id].extend(
-    #         [
-    #             {"role": "user", "content": question},
-    #             {"role": "assistant", "content": response},
-    #         ]
-    #     )
-
     @semantic_cache_llms.cache(namespace="pre-cache")
-    @observe(name="get_response")
     async def get_response(
         self,
         question: str,
@@ -161,58 +118,47 @@ class Rag:
         user_id: str | None = None,
         guardrails: LLMRails | None = None,
     ):
-        chat_history = self.get_session_history(session_id)
+        with self.langfuse.start_as_current_span(
+            name="get_restapi_response",
+            input={"question": question, "session_id": session_id, "user_id": user_id},
+        ) as span:
+            self.langfuse.update_current_trace(session_id=session_id, user_id=user_id)
 
-        # ———— Nếu có Guardrails thì dùng nó ————
-        if guardrails:
-            messages = [
-                {
-                    "role": "context",
-                    "content": {"session_id": session_id, "user_id": user_id},
-                },
-                {"role": "user", "content": question},
-            ]
-            # Guardrails tự động chạy input→dialog→output rails
-            result = await guardrails.generate_async(prompt=messages)
+            chat_history = self.get_session_history(session_id)
+            print("chat_history is ", chat_history)
 
-            if is_guardrails_error(result):
-                blocked_response = "I'm sorry, but I cannot provide a response to that request. The content was blocked by our safety guidelines."
-                return blocked_response
+            # ———— Nếu có Guardrails thì dùng nó ————
+            if guardrails:
+                messages = [
+                    {
+                        "role": "context",
+                        "content": {"session_id": session_id, "user_id": user_id},
+                    },
+                    {"role": "user", "content": question},
+                ]
+                # Guardrails tự động chạy input→dialog→output rails
+                # KHÔNG trace guardrails.generate_async để tránh lưu config phức tạp
+                result = await guardrails.generate_async(prompt=messages)
 
-            # Không cần lưu history nếu Guardrails block ; Nếu guardrails ok thì lưu
-            # self._save_to_session_history(session_id, question, str(result)) # Removed as per new_code
-            # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
-            # current_history = self.get_session_history(session_id) # Removed as per new_code
-            # if len(current_history) >= 4: # Removed as per new_code
-            #     summarized_history = ( # Removed as per new_code
-            #         await self.summarize_service._summarize_and_truncate_history( # Removed as per new_code
-            #             chat_history=current_history, keep_last=2 # Removed as per new_code
-            #         ) # Removed as per new_code
-            #     ) # Removed as per new_code
-            #     self.session_histories[session_id] = summarized_history # Removed as per new_code
-            return str(result)
+                if is_guardrails_error(result):
+                    blocked_response = "I'm sorry, but I cannot provide a response to that request. The content was blocked by our safety guidelines."
+                    span.update(output=blocked_response)
+                    return blocked_response
 
-        # ———— Fallback: chạy RAG thường ————
+                response = str(result)
+                span.update(output=response)
+                return response
 
-        rag_output = await self.rest_generator_service.generate(
-            question=question,
-            chat_history=chat_history,
-            session_id=session_id,
-            user_id=user_id,
-        )
+            # ———— Fallback: chạy RAG thường ————
+            rag_output = await self.rest_generator_service.generate(
+                question=question,
+                chat_history=chat_history,
+                session_id=session_id,
+                user_id=user_id,
+            )
 
-        # lưu lại history sau khi RAG trả về
-        # self._save_to_session_history(session_id, question, rag_output) # Removed as per new_code
-        # Kiểm tra và tóm tắt lịch sử nếu cần (chạy sau khi response xong)
-        # current_history = self.get_session_history(session_id) # Removed as per new_code
-        # if len(current_history) >= 4: # Removed as per new_code
-        #     summarized_history = ( # Removed as per new_code
-        #         await self.summarize_service._summarize_and_truncate_history( # Removed as per new_code
-        #             chat_history=current_history, keep_last=2 # Removed as per new_code
-        #         ) # Removed as per new_code
-        #     ) # Removed as per new_code
-        #     self.session_histories[session_id] = summarized_history # Removed as per new_code
-        return rag_output
+            span.update(output=rag_output)
+            return rag_output
 
     # ----------------------------------------------SSE----------------------------------------------
     @semantic_cache_llms.cache(namespace="pre-cache")
@@ -284,7 +230,6 @@ class Rag:
                     question = user_message_content
 
             # Tạo async generator cho external LLM streaming
-            @observe()
             async def rag_token_generator(question, chat_history, session_id, user_id):
                 """External generator sử dụng generator_service để tạo tokens"""
                 async for message in self.sse_generator_service.generate_stream(

@@ -1,18 +1,25 @@
 import logging
 import tracemalloc
-from contextlib import asynccontextmanager
 import os
+import argparse
+import uvicorn
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from nemoguardrails import LLMRails, RailsConfig
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from src.api.routers.api import api_router
 from src.services.application.rag import rag_service
 from src.config.settings import APP_CONFIGS, SETTINGS
-from nemoguardrails import LLMRails, RailsConfig
+
 
 tracemalloc.start()
 
 
-# Define the filter
 class EndpointFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         return (
@@ -29,22 +36,17 @@ logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 async def lifespan(app: FastAPI):
     app.state.rag_service = rag_service
 
-    # --- REST API Guardrails Setup ---
-    config_restapi = RailsConfig.from_path("guardrails/config_restapi")
-    rails_restapi = LLMRails(config_restapi)
-    app.state.rails_restapi = rails_restapi
+    config_restapi = RailsConfig.from_path(SETTINGS.GUARDRAILS_RESTAPI_PATH)
+    app.state.rails_restapi = LLMRails(config_restapi)
 
-    # --- SSE Guardrails Setup ---
-    config_sse = RailsConfig.from_path("guardrails/config_sse")
-    rails_sse = LLMRails(config_sse)
-    app.state.rails_sse = rails_sse
+    config_sse = RailsConfig.from_path(SETTINGS.GUARDRAILS_SSE_PATH)
+    app.state.rails_sse = LLMRails(config_sse)
 
     yield
 
 
 app = FastAPI(**APP_CONFIGS, lifespan=lifespan)
 
-# --- CORS Middleware Setup ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,3 +70,36 @@ app.include_router(
     api_router,
     prefix=SETTINGS.API_V1_STR,
 )
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run RAG API server")
+    parser.add_argument(
+        "--provider",
+        choices=["groq", "openai", "lm-studio"],
+        required=True,
+        help="LLM provider to use",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="environment_battery",
+        help="Dataset name to use for RAG",
+    )
+    args = parser.parse_args()
+
+    os.environ["LITELLM_MODEL"] = args.provider
+    os.environ["DATASET_NAME"] = args.dataset
+
+    print(f"🚀 Starting RAG API server...")
+    print(f"   Provider: {args.provider}")
+    print(f"   Dataset: {args.dataset}")
+    print(f"   Collection: rag-pipeline-{args.dataset}")
+    print(f"   Host: {SETTINGS.HOST}:{SETTINGS.PORT}")
+    print(f"   API Docs: http://{SETTINGS.HOST}:{SETTINGS.PORT}/docs")
+
+    uvicorn.run(
+        "src.main:app",
+        host=SETTINGS.HOST,
+        port=SETTINGS.PORT,
+        reload=True,
+    )

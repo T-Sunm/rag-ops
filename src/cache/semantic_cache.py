@@ -1,18 +1,3 @@
-"""
-    A semantic cache for LLM responses that supports both REST API and SSE.
-
-    This class provides a decorator-based caching mechanism that intelligently handles
-    two types of function returns:
-    1.  **Async Functions (for REST API):** Caches the final, complete string response.
-    2.  **Async Generator Functions (for SSE):** Caches both the individual streamed chunks and the full concatenated response.
-
-    The caching strategy is designed for interoperability. When a cache lookup occurs:
-    - A REST API call can retrieve a full response that was originally cached from an SSE stream by using the stored `full_response`.
-    - An SSE stream can retrieve a response cached by a REST API call and stream it back character-by-character to the client, preserving the streaming experience.
-
-    This prevents compatibility issues where one service type tries to use a cache entry from another, such as a REST API endpoint encountering an array of chunks from an SSE cache.
-"""
-
 import inspect
 import asyncio
 import logging
@@ -50,118 +35,116 @@ class SemanticCacheLLMs:
             ttl,
         )
 
+    def _get_context_str(self, **kwargs: Any) -> Optional[str]:
+        """Extracts context string from keyword arguments."""
+        question = kwargs.get("question")
+        messages = kwargs.get("messages")
+        if messages:  # post-cache
+            return build_context(messages)
+        return question  # pre-cache
+
+    async def _handle_sse_cache_hit(self, hit: Generation):
+        """Handles an SSE cache hit by streaming the cached response."""
+        try:
+            cached_data = json.loads(hit.text)
+            response_to_yield = cached_data.get("response", "")
+            if response_to_yield and isinstance(response_to_yield, str):
+                words = response_to_yield.split(" ")
+                for i, word in enumerate(words):
+                    chunk = word + (" " if i < len(words) - 1 else "")
+                    yield f"{json.dumps(chunk)}\n\n"
+                return
+        except (json.JSONDecodeError, KeyError):
+            yield f'{json.dumps("Error loading from cache")}\n\n'
+
+    async def _execute_and_cache_sse(
+        self, func, namespace: str, context_str: str, *args, **kwargs
+    ):
+        """Executes the function for an SSE cache miss and caches the result."""
+        full_response = ""
+        async for chunk in func(*args, **kwargs):
+            clean_chunk = chunk.replace("\n\n", "")
+            try:
+                # Try to decode JSON if it looks like JSON (starts and ends with quotes)
+                if clean_chunk.strip().startswith('"') and clean_chunk.strip().endswith(
+                    '"'
+                ):
+                    decoded_chunk = json.loads(clean_chunk)
+                    full_response += decoded_chunk
+                else:
+                    full_response += clean_chunk
+            except json.JSONDecodeError:
+                full_response += clean_chunk  # Append as is if not valid JSON
+            yield chunk
+
+        cache_data = {
+            "type": "sse_response",
+            "response": full_response.strip(),
+        }
+        self._cache.update(
+            context_str,
+            namespace,
+            [Generation(text=json.dumps(cache_data))],
+        )
+        logger.info("SSE Cache-miss [%s]: %s", namespace, context_str)
+
+    def _handle_rest_cache_hit(self, hit: Generation) -> Any:
+        """Handles a REST API cache hit."""
+        cached_data = json.loads(hit.text)
+        return cached_data["response"]
+
+    async def _execute_and_cache_rest(
+        self, func, namespace: str, context_str: str, *args, **kwargs
+    ):
+        """Executes the function for a REST API cache miss and caches the result."""
+        result = await func(*args, **kwargs)
+        cache_data = {"type": "rest_response", "response": result}
+        self._cache.update(
+            context_str,
+            namespace,
+            [Generation(text=json.dumps(cache_data))],
+        )
+        logger.debug("Cache-miss → stored [%s]: %s", namespace, context_str)
+        return result
+
     def cache(self, *, namespace: str):
         def inner(func):
-            is_async_gen = inspect.isasyncgenfunction(func)
-            is_async_func = asyncio.iscoroutinefunction(func) and not is_async_gen
-
-            if is_async_gen:  # for sse
+            if inspect.isasyncgenfunction(func):
 
                 @wraps(func)
-                async def wrapper(*args, **kwargs):
-                    question = kwargs.get("question")
-                    messages = kwargs.get("messages")
+                async def sse_wrapper(*args, **kwargs):
+                    context_str = self._get_context_str(**kwargs)
 
-                    if messages:  # post-cache
-                        context_str = build_context(messages)
-                    else:  # pre-cache
-                        context_str = question
-
-                    # 1) Lookup
                     hits: List[Generation] = self._cache.lookup(context_str, namespace)
+
                     if hits:
                         logger.info("SSE Cache-hit [%s]: %s", namespace, context_str)
-                        txt = hits[0].text
-                        print(txt)
+                        async for chunk in self._handle_sse_cache_hit(hits[0]):
+                            yield chunk
+                    else:
+                        async for chunk in self._execute_and_cache_sse(
+                            func, namespace, context_str, *args, **kwargs
+                        ):
+                            yield chunk
 
-                        try:
-                            cached_data = json.loads(txt)
-                            response_to_yield = cached_data.get("response", "")
-
-                            if response_to_yield and isinstance(response_to_yield, str):
-                                # Stream word by word for smooth UX
-                                words = response_to_yield.split(" ")
-                                for i, word in enumerate(words):
-                                    # Add space back except for last word
-                                    chunk = word + (" " if i < len(words) - 1 else "")
-                                    yield f"{json.dumps(chunk)}\n\n"
-
-                                return
-                        except (json.JSONDecodeError, KeyError):
-                            # Fallback for malformed cache
-                            yield f"{json.dumps('Error loading from cache')}\n\n"
-                            return
-
-                    # 2) Call LLM function
-                    full_response = ""
-                    async for chunk in func(*args, **kwargs):
-                        clean_chunk = chunk.replace("\n\n", "")
-
-                        #  Try to decode JSON if it looks like JSON (starts and ends with quotes)
-                        if clean_chunk.strip().startswith(
-                            '"'
-                        ) and clean_chunk.strip().endswith('"'):
-                            # This is likely JSON-encoded text from RAG service
-                            decoded_chunk = json.loads(clean_chunk)
-                            full_response += decoded_chunk
-                        else:
-                            full_response += clean_chunk
-
-                        yield chunk
-
-                    # 3) Update cache with clean full response
-                    cache_data = {
-                        "type": "sse_response",
-                        "response": full_response.strip(),
-                    }
-                    self._cache.update(
-                        context_str,
-                        namespace,
-                        [Generation(text=json.dumps(cache_data))],
-                    )
-                    logger.info("SSE Cache-miss [%s]: %s", namespace, context_str)
-                    return
-
-                return wrapper
-            elif is_async_func:  # for restAPI
+                return sse_wrapper
+            else:  # Is a coroutine function
 
                 @wraps(func)
-                async def wrapper(*args, **kwargs):
-                    question = kwargs.get("question")
-                    messages = kwargs.get("messages")
+                async def rest_wrapper(*args, **kwargs):
+                    context_str = self._get_context_str(**kwargs)
 
-                    if messages:  # post-cache
-                        context_str = build_context(messages)
-                    else:  # pre-cache
-                        context_str = question
-
-                    # 1) Lookup
                     hits: List[Generation] = self._cache.lookup(context_str, namespace)
+
                     if hits:
-                        logger.info("SSE Cache-hit [%s]: %s", namespace, context_str)
-                        txt = hits[0].text
-                        print(txt)
+                        logger.info("REST Cache-hit [%s]: %s", namespace, context_str)
+                        return self._handle_rest_cache_hit(hits[0])
+                    else:
+                        return await self._execute_and_cache_rest(
+                            func, namespace, context_str, *args, **kwargs
+                        )
 
-                        cached_data = json.loads(txt)
-                        response_content = cached_data["response"]
-
-                        return response_content
-
-                    # 2) Call LLM function
-                    result = await func(*args, **kwargs)
-
-                    # 3) Update cache
-                    cache_data = {"type": "rest_response", "response": result}
-                    self._cache.update(
-                        context_str,
-                        namespace,
-                        [Generation(text=json.dumps(cache_data))],
-                    )
-                    logger.debug("Cache-miss → stored [%s]: %s", namespace, context_str)
-
-                    return result
-
-                return wrapper
+                return rest_wrapper
 
         return inner
 

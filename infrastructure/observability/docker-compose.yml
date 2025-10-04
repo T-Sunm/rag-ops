@@ -5,7 +5,7 @@
 # External connections from other machines will not be able to reach these services directly.
 services:
   langfuse-worker:
-    image: langfuse/langfuse-worker:3
+    image: docker.io/langfuse/langfuse-worker:3
     restart: always
     depends_on: &langfuse-depends-on
       postgres:
@@ -19,6 +19,7 @@ services:
     ports:
       - 127.0.0.1:3030:3030
     environment: &langfuse-worker-env
+      NEXTAUTH_URL: http://localhost:3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres # CHANGEME
       SALT: "mysalt" # CHANGEME
       ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000" # CHANGEME: generate via `openssl rand -hex 32`
@@ -62,16 +63,17 @@ services:
       REDIS_TLS_CA: ${REDIS_TLS_CA:-/certs/ca.crt}
       REDIS_TLS_CERT: ${REDIS_TLS_CERT:-/certs/redis.crt}
       REDIS_TLS_KEY: ${REDIS_TLS_KEY:-/certs/redis.key}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-}
+      SMTP_CONNECTION_URL: ${SMTP_CONNECTION_URL:-}
 
   langfuse-web:
-    image: langfuse/langfuse:3
+    image: docker.io/langfuse/langfuse:3
     restart: always
     depends_on: *langfuse-depends-on
     ports:
       - 3000:3000
     environment:
       <<: *langfuse-worker-env
-      NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: mysecret # CHANGEME
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-}
       LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_INIT_ORG_NAME:-}
@@ -84,7 +86,7 @@ services:
       LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-}
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.9.2.1-alpine
+    image: docker.io/clickhouse/clickhouse-server
     restart: always
     user: "101:101"
     environment:
@@ -96,7 +98,7 @@ services:
       - langfuse_clickhouse_logs:/var/log/clickhouse-server
     ports:
       - 127.0.0.1:8123:8123
-      - 127.0.0.1:9123:9000
+      - 127.0.0.1:9000:9000
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
       interval: 5s
@@ -105,7 +107,7 @@ services:
       start_period: 1s
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: docker.io/minio/minio
     restart: always
     entrypoint: sh
     # create the 'langfuse' bucket before starting the service
@@ -126,7 +128,7 @@ services:
       start_period: 1s
 
   redis:
-    image: redis:7
+    image: docker.io/redis:7
     restart: always
     # CHANGEME: row below to secure redis password
     command: >
@@ -140,7 +142,7 @@ services:
       retries: 10
 
   postgres:
-    image: postgres:${POSTGRES_VERSION:-16-alpine3.22}
+    image: postgres:16-alpine3.22
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
@@ -151,6 +153,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres # CHANGEME
       POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
     ports:
       - 127.0.0.1:5432:5432
     volumes:
