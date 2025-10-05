@@ -1,0 +1,112 @@
+version: '3.8'
+
+name: rag-ops-infrastructure
+
+services:
+  # === CACHE LAYER ===
+  semantic-redis:
+    image: redis/redis-stack:7.4.0-v6
+    container_name: semantic-redis
+    ports:
+      - "6378:6379"
+      - "8002:8001"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-p", "6379", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: always
+    networks:
+      - rag-ops-network
+
+  # === ROUTER LAYER ===
+  litellm-db:
+    image: postgres:16-alpine3.22
+    container_name: litellm-db
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: llmproxy
+      POSTGRES_PASSWORD: dbpassword9090
+    ports:
+      - "5433:5432" # Avoid conflict with langfuse postgres
+    volumes:
+      - litellm_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d litellm -U llmproxy" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: always
+    networks:
+      - rag-ops-network
+
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.77.3-stable
+    container_name: litellm-router
+    volumes:
+      - ./router/config.yaml:/app/config.yaml
+    command:
+      - "--config=/app/config.yaml"
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: "postgresql://llmproxy:dbpassword9090@litellm-db:5432/litellm"
+      STORE_MODEL_IN_DB: "True"
+    env_file:
+      - ./router/.env
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 http://localhost:4000/health/liveliness || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: always
+    networks:
+      - rag-ops-network
+
+  # === MAIN APPLICATION ===
+  rag-ops-app:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: rag-ops-app
+    ports:
+      - "8000:8000"
+    environment:
+      LITELLM_BASE_URL: http://litellm:4000
+      REDIS_URI: semantic-redis:6379
+      CHROMA_PERSIST_DIR: /app/storage/chromadb
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_HOST: https://cloud.langfuse.com # Changed to Langfuse Cloud
+    volumes:
+      - ../infrastructure/storage:/app/storage
+      - ../guardrails:/app/guardrails
+    depends_on:
+      semantic-redis:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+      # Removed langfuse-web dependency
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 http://localhost:8000/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: always
+    networks:
+      - rag-ops-network
+
+volumes:
+  litellm_postgres_data:
+    name: litellm_postgres_data
+
+networks:
+  rag-ops-network:
+    driver: bridge
