@@ -1,0 +1,60 @@
+name: Create and publish Docker images with specific build args
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+            - dev
+
+jobs:
+    build-main-image:
+        uses: ./.github/workflows/build-docker-image.yaml
+        with:
+            image_name: ${{ github.repository }}
+            cache_id: main
+
+    build-cuda-image:
+        uses: ./.github/workflows/build-docker-image.yaml
+        with:
+            image_name: ${{ github.repository }}
+            cache_id: cuda
+            image_tag: type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda
+            extract_flavor: suffix=-cuda,onlatest=true
+            build_args: |
+                USE_CUDA=true
+    
+    build-minimum-image:
+        uses: ./.github/workflows/build-docker-image.yaml
+        with:
+            image_name: ${{ github.repository }}
+            cache_id: minimum
+            image_tag: type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=minimum
+            extract_flavor: suffix=-minimum,onlatest=true
+            build_args: |
+                MINIMUM_BUILD=true
+
+    merge-main-images:
+        uses: ./.github/workflows/merge-docker-images.yaml
+        needs: [build-main-image]
+        with:
+            image_name: ${{ github.repository }}
+            cache_id: main
+
+    merge-cuda-images:
+        uses: ./.github/workflows/merge-docker-images.yaml
+        needs: [build-cuda-image]
+        with:
+            image_name: ${{ github.repository }}
+            cache_id: cuda
+            extract_flavor: suffix=-cuda,onlatest=true
+            extract_tags: type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda
+
+    merge-minimum-images:
+        uses: ./.github/workflows/merge-docker-images.yaml
+        needs: [build-minimum-image]
+        with:
+            image_name: ${{ github.repository }}
+            cache_id: minimum
+            extract_flavor: suffix=-minimum,onlatest=true
+            extract_tags: type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=minimum

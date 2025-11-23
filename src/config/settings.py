@@ -61,6 +61,7 @@ class Settings(BaseSettings):
             "base_url": self.LITELLM_BASE_URL,
             "api_key": self.LITELLM_API_KEY,
             "model": self.LITELLM_MODEL,
+            "model_kwargs": {"stream_options": {"include_usage": True}},
         }
 
 
